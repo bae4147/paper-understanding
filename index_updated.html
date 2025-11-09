@@ -8,6 +8,30 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyDPd-Fz-PdUwc9uvXAg_xEVR5FyPWCg_zA",
+            authDomain: "paper-understanding.firebaseapp.com",
+            projectId: "paper-understanding",
+            storageBucket: "paper-understanding.firebasestorage.app",
+            messagingSenderId: "702665730649",
+            appId: "1:702665730649:web:9858bde469085a240fdf48"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // Make Firebase available globally
+        window.firebaseDb = db;
+        window.firebaseCollection = collection;
+        window.firebaseAddDoc = addDoc;
+        window.firebaseServerTimestamp = serverTimestamp;
+    </script>
 </head>
 <body>
     <div id="root"></div>
@@ -104,6 +128,7 @@
             const [activeTab, setActiveTab] = useState('reading'); // 'reading' or 'ai'
             const [tabTimes, setTabTimes] = useState({ reading: 0, ai: 0 });
             const tabStartTimeRef = useRef(Date.now());
+            const savedScrollPosition = useRef(0); // 스크롤 위치 저장용
 
             // Quiz phase state
             const [quizActive, setQuizActive] = useState(false);
@@ -143,6 +168,7 @@
             const lastScrollTimeRef = useRef(Date.now());
             const scrollStartTimeRef = useRef(null); // Track when scroll starts
             const isScrollingRef = useRef(false); // Track if currently scrolling
+            const sectionBeforeScrollRef = useRef('Introduction'); // 스크롤 시작 전 섹션
 
             // Papers
             const papers = [
@@ -179,7 +205,7 @@
             });
 
             // Log event
-            const logEvent = (eventType, additionalData = {}) => {
+            const logEvent = async (eventType, additionalData = {}) => {
                 const now = Date.now();
                 const timeSinceLast = now - lastEventTime.current;
                 
@@ -198,9 +224,25 @@
                 setEvents(prev => [...prev, event]);
                 lastEventTime.current = now;
 
+                // Local storage backup
                 const storedEvents = JSON.parse(localStorage.getItem('experimentEvents') || '[]');
                 storedEvents.push(event);
                 localStorage.setItem('experimentEvents', JSON.stringify(storedEvents));
+
+                // Firebase 저장
+                try {
+                    if (window.firebaseDb) {
+                        await window.firebaseAddDoc(
+                            window.firebaseCollection(window.firebaseDb, 'events'),
+                            {
+                                ...event,
+                                serverTimestamp: window.firebaseServerTimestamp()
+                            }
+                        );
+                    }
+                } catch (error) {
+                    console.error('Firebase 저장 실패:', error);
+                }
             };
 
             // Get current section based on viewport center
@@ -237,6 +279,11 @@
             const switchTab = (newTab) => {
                 if (newTab === activeTab) return;
                 
+                // 현재 reading 탭이면 스크롤 위치 저장
+                if (activeTab === 'reading' && pdfContainerRef.current) {
+                    savedScrollPosition.current = pdfContainerRef.current.scrollTop;
+                }
+                
                 // Record time spent on current tab
                 const elapsed = Date.now() - tabStartTimeRef.current;
                 setTabTimes(prev => ({
@@ -254,10 +301,18 @@
                 // Switch to new tab
                 setActiveTab(newTab);
                 tabStartTimeRef.current = Date.now();
+                
+                // reading 탭으로 돌아오면 스크롤 위치 복원
+                if (newTab === 'reading') {
+                    setTimeout(() => {
+                        if (pdfContainerRef.current) {
+                            pdfContainerRef.current.scrollTop = savedScrollPosition.current;
+                        }
+                    }, 0);
+                }
             };
 
-            // Handle scroll - track both pause time AND scroll time
-            // Only track when reading tab is active
+            // Handle scroll - track reading behavior
             const handleScroll = (e) => {
                 // Don't track scroll if not on reading tab
                 if (activeTab !== 'reading') return;
@@ -269,15 +324,23 @@
                 const newSection = getCurrentSection(scrollY, viewportHeight);
                 if (newSection !== currentSection) {
                     setCurrentSection(newSection);
-                    console.log(`📍 Section changed: ${currentSection} → ${newSection} (scroll: ${scrollY}px, viewport center: ${scrollY + viewportHeight/2}px)`);
+                    console.log(`📍 Section changed: ${currentSection} → ${newSection} (scroll: ${scrollY}px)`);
                 }
 
                 const now = Date.now();
 
-                // If this is the first scroll (starting to scroll)
+                // 첫 스크롤 시작
                 if (!isScrollingRef.current) {
                     isScrollingRef.current = true;
                     scrollStartTimeRef.current = now;
+                    
+                    // 스크롤 시작 전 섹션 저장 (여기서 읽기가 발생함!)
+                    sectionBeforeScrollRef.current = currentSection;
+                    
+                    // 첫 스크롤이면 lastScrollTimeRef 초기화
+                    if (lastScrollTimeRef.current === 0) {
+                        lastScrollTimeRef.current = now;
+                    }
                 }
 
                 // Clear existing timeout
@@ -285,37 +348,48 @@
                     clearTimeout(scrollTimeoutRef.current);
                 }
 
-                // Set new timeout - log event when user stops scrolling for 200ms
+                // 스크롤 멈춤 감지 (200ms 동안 스크롤 없으면 멈춘 것으로 간주)
                 scrollTimeoutRef.current = setTimeout(() => {
                     const scrollStopTime = Date.now();
                     
-                    // Calculate times correctly
-                    const totalTimeSinceLastStop = scrollStopTime - lastScrollTimeRef.current; // Total time since last event
-                    const scrollDuration = scrollStopTime - scrollStartTimeRef.current; // Time spent scrolling
-                    const pauseDuration = totalTimeSinceLastStop - scrollDuration; // Time paused (not scrolling)
+                    // === 시간 계산 ===
+                    // 1. 스크롤 지속 시간: 스크롤 시작 ~ 멈춤
+                    const scrollDuration = scrollStopTime - scrollStartTimeRef.current;
                     
-                    // Classify based on PAUSE duration (time not scrolling)
+                    // 2. 이전 멈춤 ~ 이번 스크롤 시작 사이의 시간 (= 읽기/멈춰있던 시간)
+                    const pauseBeforeScroll = scrollStartTimeRef.current - lastScrollTimeRef.current;
+                    
+                    // === 행동 분류 (이전 멈춤 시간 기준) ===
                     let classification;
-                    if (pauseDuration > 5000) {
-                        classification = 'reading';
-                    } else if (pauseDuration > 2000) {
-                        classification = 'scanning';
+                    if (pauseBeforeScroll > 5000) {
+                        classification = 'reading';  // 5초 이상 멈춤 = 읽기
+                    } else if (pauseBeforeScroll > 2000) {
+                        classification = 'scanning'; // 2-5초 멈춤 = 훑어보기
                     } else {
-                        classification = 'scrolling';
+                        classification = 'scrolling'; // 2초 미만 = 빠른 스크롤
                     }
 
-                    logEvent('scroll_pause', { 
-                        scrollY, 
-                        currentSection: newSection,
-                        pauseDuration: pauseDuration,      // Time paused (reading/scanning)
-                        scrollDuration: scrollDuration,    // Time spent scrolling
-                        classification 
+                    // === 이벤트 로깅 ===
+                    // 중요: pauseDuration(읽기)이 발생한 섹션은 스크롤 시작 전 섹션!
+                    const sectionWhereReadingOccurred = sectionBeforeScrollRef.current;
+                    const sectionAfterScroll = newSection;
+                    
+                    logEvent('scroll_action', { 
+                        scrollY,
+                        sectionBeforeScroll: sectionWhereReadingOccurred,  // 읽기가 발생한 섹션
+                        sectionAfterScroll: sectionAfterScroll,            // 스크롤 후 도착한 섹션
+                        classification,                                     // reading/scanning/scrolling
+                        pauseDuration: pauseBeforeScroll,                   // 이전 멈춤 시간 (읽기 시간)
+                        scrollDuration: scrollDuration,                     // 스크롤 지속 시간
+                        timestamp: scrollStopTime
                     });
 
-                    // Update references
+                    console.log(`🔍 [${classification.toUpperCase()}] pause: ${pauseBeforeScroll}ms at "${sectionWhereReadingOccurred}", scroll: ${scrollDuration}ms to "${sectionAfterScroll}"`);
+
+                    // === 상태 업데이트 ===
                     lastScrollTimeRef.current = scrollStopTime;
                     isScrollingRef.current = false;
-                }, 200); // Wait 200ms after scroll stops
+                }, 200);
             };
 
             // Handle text selection
@@ -333,6 +407,9 @@
                 e.preventDefault();
                 if (!inputMessage.trim()) return;
 
+                // API 키 - GitHub Actions에서 주입됨
+                const apiKey = '__OPENAI_API_KEY__'; // 빌드시 교체됨
+                
                 const questionTime = Date.now();
                 const userMessage = {
                     role: 'user',
@@ -351,9 +428,37 @@
                 setInputMessage('');
 
                 try {
-                    await new Promise(resolve => setTimeout(resolve, 1500));
-                    
-                    const simulatedResponse = `This is a simulated AI response to: "${queryText}". In production, this would be a real ChatGPT API call.`;
+                    // 실제 OpenAI API 호출
+                    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: 'gpt-4',
+                            messages: [
+                                ...messages.map(msg => ({
+                                    role: msg.role,
+                                    content: msg.content
+                                })),
+                                {
+                                    role: 'user',
+                                    content: queryText
+                                }
+                            ],
+                            temperature: 0.7,
+                            max_tokens: 1000
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.error?.message || 'API request failed');
+                    }
+
+                    const data = await response.json();
+                    const simulatedResponse = data.choices[0].message.content;
                     const answerTime = Date.now();
 
                     const assistantMessage = {
@@ -381,7 +486,14 @@
                         timestamp: answerTime
                     });
                 } catch (error) {
-                    console.error('Error:', error);
+                    console.error('Error calling OpenAI API:', error);
+                    // 에러 메시지 표시
+                    const errorMessage = {
+                        role: 'assistant',
+                        content: `Sorry, I encountered an error: ${error.message}. Please check the API key and try again.`,
+                        timestamp: Date.now()
+                    };
+                    setMessages(prev => [...prev, errorMessage]);
                 } finally {
                     setIsLoading(false);
                 }
@@ -491,6 +603,32 @@
             const completeReading = () => {
                 setReadingActive(false);
                 
+                // 마지막 읽기 구간 강제 로깅 (Finish 버튼 누르기 직전)
+                const now = Date.now();
+                const finalPauseDuration = now - lastScrollTimeRef.current;
+                
+                let finalClassification;
+                if (finalPauseDuration > 5000) {
+                    finalClassification = 'reading';
+                } else if (finalPauseDuration > 2000) {
+                    finalClassification = 'scanning';
+                } else {
+                    finalClassification = 'scrolling';
+                }
+                
+                logEvent('scroll_action', {
+                    scrollY: pdfContainerRef.current?.scrollTop || 0,
+                    sectionBeforeScroll: currentSection,
+                    sectionAfterScroll: currentSection,
+                    classification: finalClassification,
+                    pauseDuration: finalPauseDuration,
+                    scrollDuration: 0,
+                    isFinalSegment: true,  // 마지막 구간 표시
+                    timestamp: now
+                });
+                
+                console.log(`🏁 [FINAL ${finalClassification.toUpperCase()}] pause: ${finalPauseDuration}ms at "${currentSection}"`);
+                
                 // Record final tab time
                 const elapsed = Date.now() - tabStartTimeRef.current;
                 const finalTabTimes = {
@@ -501,10 +639,54 @@
                 const readingDuration = Date.now() - phaseStartTime.current;
                 phaseTimers.current.reading = readingDuration;
                 
+                // Classification 요약 데이터 생성
+                const scrollEvents = events.filter(e => e.eventType === 'scroll_action');
+                const classificationSummary = {
+                    reading: {
+                        count: scrollEvents.filter(e => e.classification === 'reading').length,
+                        totalDuration: scrollEvents
+                            .filter(e => e.classification === 'reading')
+                            .reduce((sum, e) => sum + (e.pauseDuration || 0), 0),
+                        sections: [...new Set(scrollEvents
+                            .filter(e => e.classification === 'reading')
+                            .map(e => e.sectionBeforeScroll))]
+                    },
+                    scanning: {
+                        count: scrollEvents.filter(e => e.classification === 'scanning').length,
+                        totalDuration: scrollEvents
+                            .filter(e => e.classification === 'scanning')
+                            .reduce((sum, e) => sum + (e.pauseDuration || 0), 0),
+                        sections: [...new Set(scrollEvents
+                            .filter(e => e.classification === 'scanning')
+                            .map(e => e.sectionBeforeScroll))]
+                    },
+                    scrolling: {
+                        count: scrollEvents.filter(e => e.classification === 'scrolling').length,
+                        totalDuration: scrollEvents
+                            .filter(e => e.classification === 'scrolling')
+                            .reduce((sum, e) => sum + (e.pauseDuration || 0), 0),
+                        sections: [...new Set(scrollEvents
+                            .filter(e => e.classification === 'scrolling')
+                            .map(e => e.sectionBeforeScroll))]
+                    }
+                };
+                
+                // 섹션별 분석
+                const sectionAnalysis = {};
+                scrollEvents.forEach(e => {
+                    const section = e.sectionBeforeScroll;
+                    if (!sectionAnalysis[section]) {
+                        sectionAnalysis[section] = { reading: 0, scanning: 0, scrolling: 0 };
+                    }
+                    sectionAnalysis[section][e.classification] += (e.pauseDuration || 0);
+                });
+                
                 logEvent('reading_phase_complete', { 
                     duration: readingDuration,
                     tabTimes: finalTabTimes,
-                    chatHistory: chatHistory
+                    chatHistory: chatHistory,
+                    classificationSummary,
+                    sectionAnalysis
                 });
                 setPhase('quiz');
                 setQuizActive(true);
@@ -547,7 +729,7 @@
             };
 
             // Export data
-            const exportData = () => {
+            const exportData = async () => {
                 const experimentData = {
                     participantId,
                     sessionId,
@@ -570,9 +752,27 @@
                         }
                     },
                     events,
-                    messages: condition === 'with_llm' ? messages : []
+                    messages: condition === 'with_llm' ? messages : [],
+                    completedAt: new Date().toISOString()
                 };
 
+                // Firebase에 전체 실험 데이터 저장
+                try {
+                    if (window.firebaseDb) {
+                        await window.firebaseAddDoc(
+                            window.firebaseCollection(window.firebaseDb, 'experiments'),
+                            {
+                                ...experimentData,
+                                serverTimestamp: window.firebaseServerTimestamp()
+                            }
+                        );
+                        console.log('Firebase에 데이터 저장 완료');
+                    }
+                } catch (error) {
+                    console.error('Firebase 저장 실패:', error);
+                }
+
+                // 로컬 JSON 다운로드 (백업용)
                 const dataStr = JSON.stringify(experimentData, null, 2);
                 const dataBlob = new Blob([dataStr], { type: 'application/json' });
                 const url = URL.createObjectURL(dataBlob);
@@ -581,7 +781,7 @@
                 link.download = `experiment_${participantId}_${sessionId}.json`;
                 link.click();
                 
-                alert('Data exported successfully!');
+                alert('Data saved to Firebase and downloaded as backup!');
             };
 
             // SETUP PHASE
@@ -725,9 +925,9 @@
 
                             {/* Reading Tab Content */}
                             {(condition === 'without_llm' || activeTab === 'reading') && (
-                                <div className="flex-1 bg-white flex flex-col">
+                                <div className="flex-1 bg-white flex flex-col overflow-hidden">
                                 {/* Toolbar */}
-                                <div className="px-6 py-4 border-b bg-gray-50 flex items-center space-x-4">
+                                <div className="px-6 py-4 border-b bg-gray-50 flex items-center space-x-4 flex-shrink-0">
                                     <div className="flex-1 flex">
                                         <input
                                             type="text"
