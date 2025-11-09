@@ -431,7 +431,19 @@
             );
         }
 
-        ReactDOM.render(<AdminDashboard />, document.getElementById('root'));
+        // Firebase 준비될 때까지 기다렸다가 렌더링
+        window.addEventListener('firebaseReady', () => {
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(<AdminDashboard />);
+        });
+        
+        // Firebase 없이도 일단 렌더링 (fallback)
+        setTimeout(() => {
+            if (!document.getElementById('root').hasChildNodes()) {
+                const root = ReactDOM.createRoot(document.getElementById('root'));
+                root.render(<AdminDashboard />);
+            }
+        }, 1000);
     </script>
 </body>
 </html>

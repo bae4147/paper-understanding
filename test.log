@@ -1,30 +1,19 @@
 📊 Section Boundaries loaded: {Abstract: {…}, 1 Introduction: {…}, 2 Methodology: {…}, 3 Results & Discussion: {…}, 4 Conclusion and Future Work: {…}}
 
-Inline Babel script:288 📍 Section changed: Abstract → 1 Introduction (scroll: 662px)
+Inline Babel script:289 📍 Section changed: Abstract → 1 Introduction (scroll: 650px)
 
-Inline Babel script:340 🔍 [SCROLLING] pause: 1494ms, scroll: 1521ms, section: 1 Introduction
+Inline Babel script:349 🔍 [SCANNING] pause: 2094ms at "Abstract", scroll: 527ms to "1 Introduction"
 
-Inline Babel script:288 📍 Section changed: 1 Introduction → 2 Methodology (scroll: 2482px)
+Inline Babel script:349 🔍 [READING] pause: 7821ms at "1 Introduction", scroll: 700ms to "1 Introduction"
 
-Inline Babel script:340 🔍 [SCROLLING] pause: 98ms, scroll: 469ms, section: 2 Methodology
+Inline Babel script:289 📍 Section changed: 1 Introduction → 2 Methodology (scroll: 2544px)
 
-Inline Babel script:340 🔍 [READING] pause: 7496ms, scroll: 786ms, section: 2 Methodology
+Inline Babel script:349 🔍 [SCANNING] pause: 3638ms at "1 Introduction", scroll: 495ms to "2 Methodology"
 
-Inline Babel script:288 📍 Section changed: 2 Methodology → 3 Results & Discussion (scroll: 5798px)
+Inline Babel script:289 📍 Section changed: 2 Methodology → 3 Results & Discussion (scroll: 5738px)
 
-Inline Babel script:288 📍 Section changed: 3 Results & Discussion → 4 Conclusion and Future Work (scroll: 8041px)
+Inline Babel script:289 📍 Section changed: 3 Results & Discussion → 4 Conclusion and Future Work (scroll: 8048px)
 
-Inline Babel script:340 🔍 [SCROLLING] pause: 1465ms, scroll: 1902ms, section: 4 Conclusion and Future Work
+Inline Babel script:349 🔍 [READING] pause: 6848ms at "2 Methodology", scroll: 1319ms to "4 Conclusion and Future Work"
 
-Inline Babel script:288 📍 Section changed: 4 Conclusion and Future Work → 3 Results & Discussion (scroll: 7983px)
-
-Inline Babel script:340 🔍 [READING] pause: 10171ms, scroll: 1207ms, section: 3 Results & Discussion
-
-Inline Babel script:288 📍 Section changed: 3 Results & Discussion → 4 Conclusion and Future Work (scroll: 8036px)
-
-Inline Babel script:340 🔍 [READING] pause: 5126ms, scroll: 378ms, section: 4 Conclusion and Future Work
-
-Inline Babel script:288 📍 Section changed: 4 Conclusion and Future Work → 3 Results & Discussion (scroll: 7997px)
-
-Inline Babel script:340 🔍 [SCANNING] pause: 4121ms, scroll: 897ms, section: 3 Results & Discussion
-
+Inline Babel script:592 🏁 [FINAL READING] pause: 9096ms at "4 Conclusion and Future Work"
