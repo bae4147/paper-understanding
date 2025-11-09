@@ -168,7 +168,6 @@
             const lastScrollTimeRef = useRef(Date.now());
             const scrollStartTimeRef = useRef(null); // Track when scroll starts
             const isScrollingRef = useRef(false); // Track if currently scrolling
-            const sectionBeforeScrollRef = useRef('Introduction'); // 스크롤 시작 전 섹션
 
             // Papers
             const papers = [
@@ -334,9 +333,6 @@
                     isScrollingRef.current = true;
                     scrollStartTimeRef.current = now;
                     
-                    // 스크롤 시작 전 섹션 저장 (여기서 읽기가 발생함!)
-                    sectionBeforeScrollRef.current = currentSection;
-                    
                     // 첫 스크롤이면 lastScrollTimeRef 초기화
                     if (lastScrollTimeRef.current === 0) {
                         lastScrollTimeRef.current = now;
@@ -370,21 +366,16 @@
                     }
 
                     // === 이벤트 로깅 ===
-                    // 중요: pauseDuration(읽기)이 발생한 섹션은 스크롤 시작 전 섹션!
-                    const sectionWhereReadingOccurred = sectionBeforeScrollRef.current;
-                    const sectionAfterScroll = newSection;
-                    
                     logEvent('scroll_action', { 
                         scrollY,
-                        sectionBeforeScroll: sectionWhereReadingOccurred,  // 읽기가 발생한 섹션
-                        sectionAfterScroll: sectionAfterScroll,            // 스크롤 후 도착한 섹션
-                        classification,                                     // reading/scanning/scrolling
-                        pauseDuration: pauseBeforeScroll,                   // 이전 멈춤 시간 (읽기 시간)
-                        scrollDuration: scrollDuration,                     // 스크롤 지속 시간
+                        currentSection: newSection,
+                        classification,           // reading/scanning/scrolling
+                        pauseDuration: pauseBeforeScroll,  // 이전 멈춤 시간
+                        scrollDuration: scrollDuration,     // 스크롤 지속 시간
                         timestamp: scrollStopTime
                     });
 
-                    console.log(`🔍 [${classification.toUpperCase()}] pause: ${pauseBeforeScroll}ms at "${sectionWhereReadingOccurred}", scroll: ${scrollDuration}ms to "${sectionAfterScroll}"`);
+                    console.log(`🔍 [${classification.toUpperCase()}] pause: ${pauseBeforeScroll}ms, scroll: ${scrollDuration}ms, section: ${newSection}`);
 
                     // === 상태 업데이트 ===
                     lastScrollTimeRef.current = scrollStopTime;
@@ -603,32 +594,6 @@
             const completeReading = () => {
                 setReadingActive(false);
                 
-                // 마지막 읽기 구간 강제 로깅 (Finish 버튼 누르기 직전)
-                const now = Date.now();
-                const finalPauseDuration = now - lastScrollTimeRef.current;
-                
-                let finalClassification;
-                if (finalPauseDuration > 5000) {
-                    finalClassification = 'reading';
-                } else if (finalPauseDuration > 2000) {
-                    finalClassification = 'scanning';
-                } else {
-                    finalClassification = 'scrolling';
-                }
-                
-                logEvent('scroll_action', {
-                    scrollY: pdfContainerRef.current?.scrollTop || 0,
-                    sectionBeforeScroll: currentSection,
-                    sectionAfterScroll: currentSection,
-                    classification: finalClassification,
-                    pauseDuration: finalPauseDuration,
-                    scrollDuration: 0,
-                    isFinalSegment: true,  // 마지막 구간 표시
-                    timestamp: now
-                });
-                
-                console.log(`🏁 [FINAL ${finalClassification.toUpperCase()}] pause: ${finalPauseDuration}ms at "${currentSection}"`);
-                
                 // Record final tab time
                 const elapsed = Date.now() - tabStartTimeRef.current;
                 const finalTabTimes = {
@@ -639,54 +604,10 @@
                 const readingDuration = Date.now() - phaseStartTime.current;
                 phaseTimers.current.reading = readingDuration;
                 
-                // Classification 요약 데이터 생성
-                const scrollEvents = events.filter(e => e.eventType === 'scroll_action');
-                const classificationSummary = {
-                    reading: {
-                        count: scrollEvents.filter(e => e.classification === 'reading').length,
-                        totalDuration: scrollEvents
-                            .filter(e => e.classification === 'reading')
-                            .reduce((sum, e) => sum + (e.pauseDuration || 0), 0),
-                        sections: [...new Set(scrollEvents
-                            .filter(e => e.classification === 'reading')
-                            .map(e => e.sectionBeforeScroll))]
-                    },
-                    scanning: {
-                        count: scrollEvents.filter(e => e.classification === 'scanning').length,
-                        totalDuration: scrollEvents
-                            .filter(e => e.classification === 'scanning')
-                            .reduce((sum, e) => sum + (e.pauseDuration || 0), 0),
-                        sections: [...new Set(scrollEvents
-                            .filter(e => e.classification === 'scanning')
-                            .map(e => e.sectionBeforeScroll))]
-                    },
-                    scrolling: {
-                        count: scrollEvents.filter(e => e.classification === 'scrolling').length,
-                        totalDuration: scrollEvents
-                            .filter(e => e.classification === 'scrolling')
-                            .reduce((sum, e) => sum + (e.pauseDuration || 0), 0),
-                        sections: [...new Set(scrollEvents
-                            .filter(e => e.classification === 'scrolling')
-                            .map(e => e.sectionBeforeScroll))]
-                    }
-                };
-                
-                // 섹션별 분석
-                const sectionAnalysis = {};
-                scrollEvents.forEach(e => {
-                    const section = e.sectionBeforeScroll;
-                    if (!sectionAnalysis[section]) {
-                        sectionAnalysis[section] = { reading: 0, scanning: 0, scrolling: 0 };
-                    }
-                    sectionAnalysis[section][e.classification] += (e.pauseDuration || 0);
-                });
-                
                 logEvent('reading_phase_complete', { 
                     duration: readingDuration,
                     tabTimes: finalTabTimes,
-                    chatHistory: chatHistory,
-                    classificationSummary,
-                    sectionAnalysis
+                    chatHistory: chatHistory
                 });
                 setPhase('quiz');
                 setQuizActive(true);

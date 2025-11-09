@@ -12,7 +12,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, doc, setDoc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         
         const firebaseConfig = {
             apiKey: "AIzaSyDPd-Fz-PdUwc9uvXAg_xEVR5FyPWCg_zA",
@@ -30,6 +30,9 @@
         window.firebaseDb = db;
         window.firebaseCollection = collection;
         window.firebaseAddDoc = addDoc;
+        window.firebaseDoc = doc;
+        window.firebaseSetDoc = setDoc;
+        window.firebaseUpdateDoc = updateDoc;
         window.firebaseServerTimestamp = serverTimestamp;
     </script>
 </head>
@@ -168,6 +171,7 @@
             const lastScrollTimeRef = useRef(Date.now());
             const scrollStartTimeRef = useRef(null); // Track when scroll starts
             const isScrollingRef = useRef(false); // Track if currently scrolling
+            const sectionBeforeScrollRef = useRef('Introduction'); // 스크롤 시작 전 섹션
 
             // Papers
             const papers = [
@@ -228,19 +232,30 @@
                 storedEvents.push(event);
                 localStorage.setItem('experimentEvents', JSON.stringify(storedEvents));
 
-                // Firebase 저장
-                try {
-                    if (window.firebaseDb) {
-                        await window.firebaseAddDoc(
-                            window.firebaseCollection(window.firebaseDb, 'events'),
-                            {
-                                ...event,
-                                serverTimestamp: window.firebaseServerTimestamp()
+                // Firebase: LLM 관련 이벤트만 실시간 저장
+                if (eventType === 'llm_question_asked' || eventType === 'llm_answer_received') {
+                    try {
+                        if (window.firebaseDb && participantId && sessionId) {
+                            const experimentRef = window.firebaseDoc(
+                                window.firebaseDb,
+                                `users/${participantId}/experiments/${sessionId}`
+                            );
+                            
+                            // LLM 메시지는 실시간으로 추가
+                            const currentMessages = [...chatHistory];
+                            if (eventType === 'llm_answer_received' && additionalData.question) {
+                                currentMessages.push({
+                                    question: additionalData.question,
+                                    answer: additionalData.answer,
+                                    responseTime: additionalData.responseTime,
+                                    questionTime: now - additionalData.responseTime,
+                                    answerTime: now
+                                });
                             }
-                        );
+                        }
+                    } catch (error) {
+                        console.error('❌ Failed to save LLM event:', error);
                     }
-                } catch (error) {
-                    console.error('Firebase 저장 실패:', error);
                 }
             };
 
@@ -333,6 +348,9 @@
                     isScrollingRef.current = true;
                     scrollStartTimeRef.current = now;
                     
+                    // 스크롤 시작 전 섹션 저장 (여기서 읽기가 발생함!)
+                    sectionBeforeScrollRef.current = currentSection;
+                    
                     // 첫 스크롤이면 lastScrollTimeRef 초기화
                     if (lastScrollTimeRef.current === 0) {
                         lastScrollTimeRef.current = now;
@@ -366,16 +384,21 @@
                     }
 
                     // === 이벤트 로깅 ===
+                    // 중요: pauseDuration(읽기)이 발생한 섹션은 스크롤 시작 전 섹션!
+                    const sectionWhereReadingOccurred = sectionBeforeScrollRef.current;
+                    const sectionAfterScroll = newSection;
+                    
                     logEvent('scroll_action', { 
                         scrollY,
-                        currentSection: newSection,
-                        classification,           // reading/scanning/scrolling
-                        pauseDuration: pauseBeforeScroll,  // 이전 멈춤 시간
-                        scrollDuration: scrollDuration,     // 스크롤 지속 시간
+                        sectionBeforeScroll: sectionWhereReadingOccurred,  // 읽기가 발생한 섹션
+                        sectionAfterScroll: sectionAfterScroll,            // 스크롤 후 도착한 섹션
+                        classification,                                     // reading/scanning/scrolling
+                        pauseDuration: pauseBeforeScroll,                   // 이전 멈춤 시간 (읽기 시간)
+                        scrollDuration: scrollDuration,                     // 스크롤 지속 시간
                         timestamp: scrollStopTime
                     });
 
-                    console.log(`🔍 [${classification.toUpperCase()}] pause: ${pauseBeforeScroll}ms, scroll: ${scrollDuration}ms, section: ${newSection}`);
+                    console.log(`🔍 [${classification.toUpperCase()}] pause: ${pauseBeforeScroll}ms at "${sectionWhereReadingOccurred}", scroll: ${scrollDuration}ms to "${sectionAfterScroll}"`);
 
                     // === 상태 업데이트 ===
                     lastScrollTimeRef.current = scrollStopTime;
@@ -586,13 +609,64 @@
                 setPhase('reading');
                 setReadingActive(true);
                 lastScrollTimeRef.current = Date.now(); // Initialize scroll timer
+                
+                // Firebase: 실험 문서 생성
+                try {
+                    if (window.firebaseDb) {
+                        const experimentRef = window.firebaseDoc(
+                            window.firebaseDb,
+                            `users/${participantId}/experiments/${sessionId}`
+                        );
+                        
+                        await window.firebaseSetDoc(experimentRef, {
+                            participantId: participantId,
+                            sessionId: sessionId,
+                            condition: condition,
+                            paper: currentPaper,
+                            startedAt: window.firebaseServerTimestamp(),
+                            status: 'in_progress',
+                            createdAt: Date.now()
+                        });
+                        
+                        console.log('✅ Experiment document created:', `users/${participantId}/experiments/${sessionId}`);
+                    }
+                } catch (error) {
+                    console.error('❌ Failed to create experiment document:', error);
+                }
+                
                 logEvent('experiment_start');
                 logEvent('reading_phase_start');
             };
 
             // Complete reading phase
-            const completeReading = () => {
+            const completeReading = async () => {
                 setReadingActive(false);
+                
+                // 마지막 읽기 구간 강제 로깅 (Finish 버튼 누르기 직전)
+                const now = Date.now();
+                const finalPauseDuration = now - lastScrollTimeRef.current;
+                
+                let finalClassification;
+                if (finalPauseDuration > 5000) {
+                    finalClassification = 'reading';
+                } else if (finalPauseDuration > 2000) {
+                    finalClassification = 'scanning';
+                } else {
+                    finalClassification = 'scrolling';
+                }
+                
+                logEvent('scroll_action', {
+                    scrollY: pdfContainerRef.current?.scrollTop || 0,
+                    sectionBeforeScroll: currentSection,
+                    sectionAfterScroll: currentSection,
+                    classification: finalClassification,
+                    pauseDuration: finalPauseDuration,
+                    scrollDuration: 0,
+                    isFinalSegment: true,  // 마지막 구간 표시
+                    timestamp: now
+                });
+                
+                console.log(`🏁 [FINAL ${finalClassification.toUpperCase()}] pause: ${finalPauseDuration}ms at "${currentSection}"`);
                 
                 // Record final tab time
                 const elapsed = Date.now() - tabStartTimeRef.current;
@@ -604,11 +678,98 @@
                 const readingDuration = Date.now() - phaseStartTime.current;
                 phaseTimers.current.reading = readingDuration;
                 
+                // Classification 요약 데이터 생성
+                const scrollEvents = events.filter(e => e.eventType === 'scroll_action');
+                const classificationSummary = {
+                    reading: {
+                        count: scrollEvents.filter(e => e.classification === 'reading').length,
+                        totalDuration: scrollEvents
+                            .filter(e => e.classification === 'reading')
+                            .reduce((sum, e) => sum + (e.pauseDuration || 0), 0),
+                        sections: [...new Set(scrollEvents
+                            .filter(e => e.classification === 'reading')
+                            .map(e => e.sectionBeforeScroll))]
+                    },
+                    scanning: {
+                        count: scrollEvents.filter(e => e.classification === 'scanning').length,
+                        totalDuration: scrollEvents
+                            .filter(e => e.classification === 'scanning')
+                            .reduce((sum, e) => sum + (e.pauseDuration || 0), 0),
+                        sections: [...new Set(scrollEvents
+                            .filter(e => e.classification === 'scanning')
+                            .map(e => e.sectionBeforeScroll))]
+                    },
+                    scrolling: {
+                        count: scrollEvents.filter(e => e.classification === 'scrolling').length,
+                        totalDuration: scrollEvents
+                            .filter(e => e.classification === 'scrolling')
+                            .reduce((sum, e) => sum + (e.pauseDuration || 0), 0),
+                        sections: [...new Set(scrollEvents
+                            .filter(e => e.classification === 'scrolling')
+                            .map(e => e.sectionBeforeScroll))]
+                    }
+                };
+                
+                // 섹션별 분석
+                const sectionAnalysis = {};
+                scrollEvents.forEach(e => {
+                    const section = e.sectionBeforeScroll;
+                    if (!sectionAnalysis[section]) {
+                        sectionAnalysis[section] = { reading: 0, scanning: 0, scrolling: 0 };
+                    }
+                    sectionAnalysis[section][e.classification] += (e.pauseDuration || 0);
+                });
+                
                 logEvent('reading_phase_complete', { 
                     duration: readingDuration,
                     tabTimes: finalTabTimes,
-                    chatHistory: chatHistory
+                    chatHistory: chatHistory,
+                    classificationSummary,
+                    sectionAnalysis
                 });
+                
+                // Firebase: 실험 문서에 reading 요약 + 이벤트 배열 저장
+                try {
+                    if (window.firebaseDb && participantId && sessionId) {
+                        const experimentRef = window.firebaseDoc(
+                            window.firebaseDb,
+                            `users/${participantId}/experiments/${sessionId}`
+                        );
+                        
+                        // Reading phase의 모든 이벤트 필터링
+                        const readingEvents = events.filter(e => 
+                            e.phase === 'reading' && 
+                            (e.eventType === 'scroll_action' || 
+                             e.eventType === 'tab_switch' ||
+                             e.eventType === 'text_selection')
+                        );
+                        
+                        const updateData = {
+                            'reading.duration': readingDuration,
+                            'reading.tabTimes': finalTabTimes,
+                            'reading.classificationSummary': classificationSummary,
+                            'reading.sectionAnalysis': sectionAnalysis,
+                            'reading.events': readingEvents, // 모든 이벤트 배열로 저장
+                            'reading.completedAt': window.firebaseServerTimestamp()
+                        };
+                        
+                        // with_llm 조건이면 LLM interaction 데이터 추가
+                        if (condition === 'with_llm' && chatHistory.length > 0) {
+                            updateData['llmInteraction.messages'] = chatHistory;
+                            updateData['llmInteraction.totalQueries'] = chatHistory.length;
+                            updateData['llmInteraction.avgResponseTime'] = chatHistory.length > 0
+                                ? chatHistory.reduce((sum, qa) => sum + qa.responseTime, 0) / chatHistory.length
+                                : 0;
+                        }
+                        
+                        await window.firebaseUpdateDoc(experimentRef, updateData);
+                        
+                        console.log('✅ Reading phase data saved (with', readingEvents.length, 'events)');
+                    }
+                } catch (error) {
+                    console.error('❌ Failed to save reading summary:', error);
+                }
+                
                 setPhase('quiz');
                 setQuizActive(true);
                 phaseStartTime.current = Date.now(); // Reset for quiz phase
@@ -622,11 +783,32 @@
             };
 
             // Complete quiz phase
-            const completeQuiz = () => {
+            const completeQuiz = async () => {
                 setQuizActive(false);
                 const quizDuration = Date.now() - phaseStartTime.current;
                 phaseTimers.current.quiz = quizDuration;
                 logEvent('quiz_phase_complete', { answers: quizAnswers, duration: quizDuration });
+                
+                // Firebase: Quiz 데이터 저장
+                try {
+                    if (window.firebaseDb && participantId && sessionId) {
+                        const experimentRef = window.firebaseDoc(
+                            window.firebaseDb,
+                            `users/${participantId}/experiments/${sessionId}`
+                        );
+                        
+                        await window.firebaseUpdateDoc(experimentRef, {
+                            'quiz.answers': quizAnswers,
+                            'quiz.duration': quizDuration,
+                            'quiz.submittedAt': window.firebaseServerTimestamp()
+                        });
+                        
+                        console.log('✅ Quiz data saved');
+                    }
+                } catch (error) {
+                    console.error('❌ Failed to save quiz data:', error);
+                }
+                
                 setPhase('review');
                 setReviewActive(true);
                 phaseStartTime.current = Date.now(); // Reset for review phase
@@ -640,11 +822,37 @@
             };
 
             // Complete review phase
-            const completeReview = () => {
+            const completeReview = async () => {
                 setReviewActive(false);
                 const reviewDuration = Date.now() - phaseStartTime.current;
                 phaseTimers.current.review = reviewDuration;
                 logEvent('review_phase_complete', { reviewData, duration: reviewDuration });
+                
+                // Firebase: Review 데이터 저장 및 실험 완료 처리
+                try {
+                    if (window.firebaseDb && participantId && sessionId) {
+                        const experimentRef = window.firebaseDoc(
+                            window.firebaseDb,
+                            `users/${participantId}/experiments/${sessionId}`
+                        );
+                        
+                        await window.firebaseUpdateDoc(experimentRef, {
+                            'review.rating': reviewData.rating,
+                            'review.strengths': reviewData.strengths,
+                            'review.weaknesses': reviewData.weaknesses,
+                            'review.suggestions': reviewData.suggestions,
+                            'review.duration': reviewDuration,
+                            'review.submittedAt': window.firebaseServerTimestamp(),
+                            'status': 'completed',
+                            'completedAt': window.firebaseServerTimestamp()
+                        });
+                        
+                        console.log('✅ Experiment completed and saved');
+                    }
+                } catch (error) {
+                    console.error('❌ Failed to complete experiment:', error);
+                }
+                
                 setPhase('complete');
                 logEvent('experiment_complete');
             };
