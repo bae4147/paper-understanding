@@ -320,7 +320,7 @@
                                     {/* Tab Usage Distribution (맨 위, with_llm만) */}
                                     {selectedExperiment.condition === 'with_llm' && selectedExperiment.reading?.duration && (
                                         <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                                            <h3 className="text-md font-semibold mb-3">Tab Usage Distribution 무시</h3>
+                                            <h3 className="text-md font-semibold mb-3">Tab Usage Distribution</h3>
                                             
                                             {(() => {
                                                 // Reading tab time = Reading + Scanning + Scrolling 행동 시간
@@ -503,6 +503,107 @@
                                             )) || <div className="text-center text-gray-500">No messages recorded</div>}
                                         </div>
                                     </div>
+                                    
+                                    {/* LLM Typing Pattern Analysis */}
+                                    {(() => {
+                                        const llmActivities = allEvents.filter(e => e.eventType === 'llm_activity');
+                                        
+                                        if (llmActivities.length === 0) return null;
+                                        
+                                        const typingEvents = llmActivities.filter(e => e.classification === 'typing');
+                                        const noneTypingEvents = llmActivities.filter(e => e.classification === 'none-typing');
+                                        
+                                        const typingDuration = typingEvents.reduce((sum, e) => sum + (e.duration || 0), 0);
+                                        const noneTypingDuration = noneTypingEvents.reduce((sum, e) => sum + (e.duration || 0), 0);
+                                        const totalActivityDuration = typingDuration + noneTypingDuration;
+                                        
+                                        const typingPercent = totalActivityDuration > 0 ? (typingDuration / totalActivityDuration * 100) : 0;
+                                        const noneTypingPercent = totalActivityDuration > 0 ? (noneTypingDuration / totalActivityDuration * 100) : 0;
+                                        
+                                        return (
+                                            <div className="mt-6 p-4 bg-purple-50 rounded-lg border-l-4 border-purple-500">
+                                                <h3 className="text-md font-semibold mb-3">⌨️ LLM Usage Pattern</h3>
+                                                
+                                                {/* Horizontal Bar */}
+                                                <div className="h-8 bg-gray-200 rounded-lg overflow-hidden flex shadow-sm mb-3">
+                                                    <div 
+                                                        className="bg-indigo-600 flex items-center justify-center text-white text-xs font-semibold transition-all"
+                                                        style={{ width: `${typingPercent}%` }}
+                                                    >
+                                                        {typingPercent > 10 ? `Typing ${typingPercent.toFixed(0)}%` : ''}
+                                                    </div>
+                                                    <div 
+                                                        className="bg-purple-400 flex items-center justify-center text-white text-xs font-semibold transition-all"
+                                                        style={{ width: `${noneTypingPercent}%` }}
+                                                    >
+                                                        {noneTypingPercent > 10 ? `Reading ${noneTypingPercent.toFixed(0)}%` : ''}
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Stats Grid */}
+                                                <div className="grid grid-cols-3 gap-3 text-sm">
+                                                    <div className="text-center">
+                                                        <div className="text-gray-600">Typing</div>
+                                                        <div className="font-bold text-indigo-600">
+                                                            {(typingDuration / 1000).toFixed(1)}s
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            {typingEvents.length} events
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <div className="text-gray-600">Reading/Thinking</div>
+                                                        <div className="font-bold text-purple-600">
+                                                            {(noneTypingDuration / 1000).toFixed(1)}s
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            {noneTypingEvents.length} events
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <div className="text-gray-600">Total Activity</div>
+                                                        <div className="font-bold text-gray-700">
+                                                            {(totalActivityDuration / 1000).toFixed(1)}s
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            {llmActivities.length} events
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Event List */}
+                                                <details className="mt-4">
+                                                    <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+                                                        Show detailed timeline ({llmActivities.length} activities)
+                                                    </summary>
+                                                    <div className="mt-3 space-y-2 max-h-60 overflow-y-auto">
+                                                        {llmActivities
+                                                            .sort((a, b) => a.timestamp - b.timestamp)
+                                                            .map((activity, idx) => (
+                                                                <div key={idx} className={`p-2 rounded text-xs ${
+                                                                    activity.classification === 'typing' 
+                                                                        ? 'bg-indigo-50 border-l-2 border-indigo-500' 
+                                                                        : 'bg-purple-50 border-l-2 border-purple-400'
+                                                                }`}>
+                                                                    <div className="flex justify-between items-center">
+                                                                        <span className="font-medium">
+                                                                            {activity.classification === 'typing' ? '⌨️ Typing' : '📖 Reading/Thinking'}
+                                                                        </span>
+                                                                        <span className="text-gray-600">
+                                                                            {(activity.duration / 1000).toFixed(2)}s
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="text-gray-500 mt-1">
+                                                                        {new Date(activity.timestamp).toLocaleTimeString()}
+                                                                    </div>
+                                                                </div>
+                                                            ))
+                                                        }
+                                                    </div>
+                                                </details>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             )}
 
@@ -536,7 +637,24 @@
                                                 // Fixed scale: 10 seconds = 100px
                                                 const pixelsPerSecond = 10;
                                                 const totalSeconds = totalDuration / 1000;
-                                                const timelineWidth = Math.max(800, totalSeconds * pixelsPerSecond);
+                                                
+                                                // 실제 첫 pause 시작 시간 계산
+                                                let earliestTime = startTime;
+                                                scrollEvents.forEach(event => {
+                                                    const pauseDur = event.pauseDuration || 0;
+                                                    const scrollDur = event.scrollDuration || 0;
+                                                    const eventStart = event.timestamp - pauseDur - scrollDur;
+                                                    if (eventStart < earliestTime) {
+                                                        earliestTime = eventStart;
+                                                    }
+                                                });
+                                                
+                                                // Timeline을 earliest time부터 시작
+                                                const adjustedStartTime = earliestTime;
+                                                const adjustedTotalDuration = endTime - adjustedStartTime;
+                                                const adjustedTotalSeconds = adjustedTotalDuration / 1000;
+                                                
+                                                const timelineWidth = Math.max(800, adjustedTotalSeconds * pixelsPerSecond);
                                                 const leftPadding = 50;
                                                 const rightPadding = 50;
                                                 const totalWidth = timelineWidth + leftPadding + rightPadding;
@@ -553,9 +671,9 @@
                                                         ></div>
                                                         
                                                         {/* Time markers - every 30 seconds */}
-                                                        {Array.from({length: Math.ceil(totalSeconds / 30) + 1}, (_, i) => i * 30).map(seconds => {
-                                                            if (seconds > totalSeconds) return null;
-                                                            const xPos = leftPadding + (seconds / totalSeconds) * timelineWidth;
+                                                        {Array.from({length: Math.ceil(adjustedTotalSeconds / 30) + 1}, (_, i) => i * 30).map(seconds => {
+                                                            if (seconds > adjustedTotalSeconds) return null;
+                                                            const xPos = leftPadding + (seconds / adjustedTotalSeconds) * timelineWidth;
                                                             return (
                                                                 <div key={seconds} className="absolute bottom-12" style={{left: `${xPos}px`}}>
                                                                     <div className="w-px h-4 bg-gray-500 -mb-4"></div>
@@ -568,9 +686,9 @@
                                                         
                                                         {/* Events with pause and scroll segments */}
                                                         {scrollEvents.map((event, idx) => {
-                                                            const eventTime = event.timestamp - startTime;
+                                                            const eventTime = event.timestamp - adjustedStartTime;
                                                             const eventSeconds = eventTime / 1000;
-                                                            const eventXPos = leftPadding + (eventSeconds / totalSeconds) * timelineWidth;
+                                                            const eventXPos = leftPadding + (eventSeconds / adjustedTotalSeconds) * timelineWidth;
                                                             
                                                             const pauseDur = event.pauseDuration || 0;
                                                             const scrollDur = event.scrollDuration || 0;
@@ -581,11 +699,11 @@
                                                             const pauseStartSeconds = eventSeconds - pauseSeconds - scrollSeconds;
                                                             const scrollStartSeconds = eventSeconds - scrollSeconds;
                                                             
-                                                            const pauseStartX = Math.max(leftPadding, leftPadding + (pauseStartSeconds / totalSeconds) * timelineWidth);
-                                                            const scrollStartX = leftPadding + (scrollStartSeconds / totalSeconds) * timelineWidth;
+                                                            const pauseStartX = leftPadding + (pauseStartSeconds / adjustedTotalSeconds) * timelineWidth;
+                                                            const scrollStartX = leftPadding + (scrollStartSeconds / adjustedTotalSeconds) * timelineWidth;
                                                             
-                                                            const pauseWidth = Math.max(2, (pauseSeconds / totalSeconds) * timelineWidth);
-                                                            const scrollWidth = Math.max(2, (scrollSeconds / totalSeconds) * timelineWidth);
+                                                            const pauseWidth = Math.max(2, (pauseSeconds / adjustedTotalSeconds) * timelineWidth);
+                                                            const scrollWidth = Math.max(2, (scrollSeconds / adjustedTotalSeconds) * timelineWidth);
                                                             
                                                             const colorMap = {
                                                                 reading: '#10B981',
@@ -670,15 +788,15 @@
                                                         {allEvents
                                                             .filter(e => e.eventType === 'tab_switch' && e.classification === 'llm')
                                                             .map((event, idx) => {
-                                                                const eventTime = event.timestamp - startTime;
+                                                                const eventTime = event.timestamp - adjustedStartTime;
                                                                 const eventSeconds = eventTime / 1000;
                                                                 const llmDuration = event.llmDuration || event.timeOnPreviousTab || 0;
                                                                 const llmSeconds = llmDuration / 1000;
                                                                 
                                                                 const llmStartSeconds = eventSeconds - llmSeconds;
-                                                                const llmStartX = leftPadding + (llmStartSeconds / totalSeconds) * timelineWidth;
-                                                                const llmEndX = leftPadding + (eventSeconds / totalSeconds) * timelineWidth;
-                                                                const llmWidth = Math.max(2, (llmSeconds / totalSeconds) * timelineWidth);
+                                                                const llmStartX = leftPadding + (llmStartSeconds / adjustedTotalSeconds) * timelineWidth;
+                                                                const llmEndX = leftPadding + (eventSeconds / adjustedTotalSeconds) * timelineWidth;
+                                                                const llmWidth = Math.max(2, (llmSeconds / adjustedTotalSeconds) * timelineWidth);
                                                                 
                                                                 return (
                                                                     <div key={`llm-${idx}`}>
@@ -770,9 +888,9 @@
                                                 <th className="px-4 py-2 text-left font-medium text-gray-700">Time</th>
                                                 <th className="px-4 py-2 text-left font-medium text-gray-700">Event Type</th>
                                                 <th className="px-4 py-2 text-left font-medium text-gray-700">Classification</th>
-                                                <th className="px-4 py-2 text-left font-medium text-gray-700">Section</th>
-                                                <th className="px-4 py-2 text-left font-medium text-gray-700">Pause</th>
-                                                <th className="px-4 py-2 text-left font-medium text-gray-700">Scroll</th>
+                                                <th className="px-4 py-2 text-left font-medium text-gray-700">Section/Context</th>
+                                                <th className="px-4 py-2 text-left font-medium text-gray-700">Duration</th>
+                                                <th className="px-4 py-2 text-left font-medium text-gray-700">Details</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-200">
@@ -782,7 +900,19 @@
                                                     const colorMap = {
                                                         reading: 'bg-green-50',
                                                         scanning: 'bg-yellow-50',
-                                                        scrolling: 'bg-blue-50'
+                                                        scrolling: 'bg-blue-50',
+                                                        llm: 'bg-purple-50',
+                                                        typing: 'bg-indigo-50',
+                                                        'none-typing': 'bg-purple-50'
+                                                    };
+                                                    
+                                                    const badgeColorMap = {
+                                                        reading: 'bg-green-100 text-green-800',
+                                                        scanning: 'bg-yellow-100 text-yellow-800',
+                                                        scrolling: 'bg-blue-100 text-blue-800',
+                                                        llm: 'bg-purple-100 text-purple-800',
+                                                        typing: 'bg-indigo-100 text-indigo-800',
+                                                        'none-typing': 'bg-purple-100 text-purple-800'
                                                     };
                                                     
                                                     return (
@@ -799,23 +929,38 @@
                                                             <td className="px-4 py-2">
                                                                 {event.classification && (
                                                                     <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                                                        event.classification === 'reading' ? 'bg-green-100 text-green-800' :
-                                                                        event.classification === 'scanning' ? 'bg-yellow-100 text-yellow-800' :
-                                                                        event.classification === 'scrolling' ? 'bg-blue-100 text-blue-800' :
-                                                                        'bg-gray-100 text-gray-800'
+                                                                        badgeColorMap[event.classification] || 'bg-gray-100 text-gray-800'
                                                                     }`}>
+                                                                        {event.classification === 'typing' && '⌨️ '}
+                                                                        {event.classification === 'none-typing' && '📖 '}
+                                                                        {event.classification === 'llm' && '🤖 '}
                                                                         {event.classification}
                                                                     </span>
                                                                 )}
                                                             </td>
                                                             <td className="px-4 py-2 text-gray-700">
-                                                                {event.sectionBeforeScroll || event.currentSection || '-'}
+                                                                {event.eventType === 'llm_activity' 
+                                                                    ? 'AI Tab'
+                                                                    : (event.sectionBeforeScroll || event.currentSection || '-')
+                                                                }
                                                             </td>
                                                             <td className="px-4 py-2 text-gray-600">
-                                                                {event.pauseDuration ? `${(event.pauseDuration / 1000).toFixed(2)}s` : '-'}
+                                                                {event.eventType === 'scroll_action' && (
+                                                                    <>
+                                                                        <div>Pause: {(event.pauseDuration / 1000).toFixed(2)}s</div>
+                                                                        <div>Scroll: {(event.scrollDuration / 1000).toFixed(2)}s</div>
+                                                                    </>
+                                                                )}
+                                                                {event.eventType === 'llm_activity' && event.duration && (
+                                                                    <div>{(event.duration / 1000).toFixed(2)}s</div>
+                                                                )}
+                                                                {event.eventType === 'tab_switch' && event.timeOnPreviousTab && (
+                                                                    <div>{(event.timeOnPreviousTab / 1000).toFixed(2)}s</div>
+                                                                )}
                                                             </td>
-                                                            <td className="px-4 py-2 text-gray-600">
-                                                                {event.scrollDuration ? `${(event.scrollDuration / 1000).toFixed(2)}s` : '-'}
+                                                            <td className="px-4 py-2 text-xs text-gray-500">
+                                                                {event.isTabSwitch && '🔄 Tab Switch'}
+                                                                {event.isFinalSegment && '🏁 Final'}
                                                             </td>
                                                         </tr>
                                                     );
@@ -825,7 +970,7 @@
                                     </table>
                                 </div>
                             </div>
-                        </div>
+                    </div>
                 );
             }
 
