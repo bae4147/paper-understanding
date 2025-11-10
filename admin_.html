@@ -7,6 +7,7 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Firebase Compat SDK -->
@@ -37,33 +38,42 @@
             const [selectedExperiment, setSelectedExperiment] = useState(null);
             const [loading, setLoading] = useState(false);
             const [view, setView] = useState('list');
+            const chartRefs = useRef({});
 
             useEffect(() => {
                 loadExperiments();
             }, []);
 
+            // Cleanup charts
+            useEffect(() => {
+                return () => {
+                    Object.values(chartRefs.current).forEach(chart => {
+                        if (chart) chart.destroy();
+                    });
+                };
+            }, [view, selectedExperiment]);
+
             const loadExperiments = async () => {
                 setLoading(true);
                 try {
-                    // collectionGroup으로 모든 실험 가져오기
-                    const experimentsQuery = firebase.firestore()
-                        .collectionGroup('experiments')
-                        .orderBy('startedAt', 'desc');
-                    
+                    const experimentsQuery = db.collectionGroup('experiments');
                     const snapshot = await experimentsQuery.get();
                     
-                    const experimentsData = snapshot.docs.map(doc => {
+                    let experimentsData = snapshot.docs.map(doc => {
                         const data = doc.data();
-                        
                         return {
                             id: doc.id,
                             ...data,
-                            // reading.events 배열을 events로 매핑
                             events: data.reading?.events || [],
-                            // Firestore Timestamp를 Date로 변환
                             startedAt: data.startedAt?.toDate?.() || data.createdAt,
                             completedAt: data.completedAt?.toDate?.() || null
                         };
+                    });
+                    
+                    experimentsData.sort((a, b) => {
+                        const timeA = a.startedAt instanceof Date ? a.startedAt.getTime() : (a.startedAt || 0);
+                        const timeB = b.startedAt instanceof Date ? b.startedAt.getTime() : (b.startedAt || 0);
+                        return timeB - timeA;
                     });
                     
                     setExperiments(experimentsData);
@@ -79,48 +89,200 @@
                 if (!events) return null;
                 
                 const scrollEvents = events.filter(e => e.eventType === 'scroll_action');
+                const tabSwitchEvents = events.filter(e => e.eventType === 'tab_switch' && e.classification === 'llm');
                 
                 const summary = {
                     reading: { count: 0, duration: 0, sections: new Set() },
                     scanning: { count: 0, duration: 0, sections: new Set() },
-                    scrolling: { count: 0, duration: 0, sections: new Set() }
+                    scrolling: { count: 0, duration: 0, sections: new Set() },
+                    llm: { count: 0, duration: 0, sections: new Set() }
                 };
 
                 const sectionMap = {};
 
+                // Scroll events
                 scrollEvents.forEach(e => {
                     const cls = e.classification;
                     const section = e.sectionBeforeScroll || e.currentSection || 'Unknown';
                     
                     if (summary[cls]) {
                         summary[cls].count++;
-                        summary[cls].duration += (e.pauseDuration || 0);
+                        
+                        // Duration 계산
+                        if (cls === 'scrolling') {
+                            // Scrolling: pause + scroll motion 모두 포함
+                            summary[cls].duration += ((e.pauseDuration || 0) + (e.scrollDuration || 0));
+                        } else {
+                            // Reading/Scanning: pause만
+                            summary[cls].duration += (e.pauseDuration || 0);
+                        }
+                        
                         summary[cls].sections.add(section);
 
                         if (!sectionMap[section]) {
-                            sectionMap[section] = { reading: 0, scanning: 0, scrolling: 0 };
+                            sectionMap[section] = { reading: 0, scanning: 0, scrolling: 0, llm: 0 };
                         }
-                        sectionMap[section][cls] += (e.pauseDuration || 0);
+                        
+                        // Section map도 동일하게
+                        if (cls === 'scrolling') {
+                            sectionMap[section][cls] += ((e.pauseDuration || 0) + (e.scrollDuration || 0));
+                        } else {
+                            sectionMap[section][cls] += (e.pauseDuration || 0);
+                        }
                     }
                 });
 
-                // Calculate percentages
-                const totalDuration = summary.reading.duration + summary.scanning.duration + summary.scrolling.duration;
+                // LLM events (tab switches)
+                tabSwitchEvents.forEach(e => {
+                    summary.llm.count++;
+                    summary.llm.duration += (e.llmDuration || e.timeOnPreviousTab || 0);
+                    summary.llm.sections.add('AI Tab'); // LLM은 특정 섹션 없음
+                });
+
+                const totalDuration = summary.reading.duration + summary.scanning.duration + 
+                                     summary.scrolling.duration + summary.llm.duration;
                 
                 Object.keys(summary).forEach(key => {
                     summary[key].percentage = totalDuration > 0 
                         ? (summary[key].duration / totalDuration * 100).toFixed(1)
                         : 0;
                     summary[key].sections = Array.from(summary[key].sections);
+                    summary[key].durationSec = (summary[key].duration / 1000).toFixed(1);
+                    summary[key].timePercentage = totalDuration > 0
+                        ? (summary[key].duration / totalDuration * 100).toFixed(1)
+                        : 0;
                 });
 
                 return { summary, sectionMap, totalDuration };
             };
 
+            // Render charts when detail view is shown
+            useEffect(() => {
+                if (view === 'detail' && selectedExperiment) {
+                    const analysis = analyzeClassification(selectedExperiment.events);
+                    if (!analysis) return;
+
+                    // Pie Chart - Time-based, Reading/Scanning/Scrolling only
+                    setTimeout(() => {
+                        const pieCtx = document.getElementById('classificationPieChart');
+                        if (pieCtx && !chartRefs.current.pie) {
+                            const readingTime = analysis.summary.reading.duration;
+                            const scanningTime = analysis.summary.scanning.duration;
+                            const scrollingTime = analysis.summary.scrolling.duration;
+                            const totalTimeWithoutLLM = readingTime + scanningTime + scrollingTime;
+                            
+                            chartRefs.current.pie = new Chart(pieCtx, {
+                                type: 'doughnut',
+                                data: {
+                                    labels: ['Reading', 'Scanning', 'Scrolling'],
+                                    datasets: [{
+                                        data: [readingTime, scanningTime, scrollingTime],
+                                        backgroundColor: ['#10B981', '#FBBF24', '#3B82F6'],
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: true,
+                                    plugins: {
+                                        legend: { 
+                                            position: 'bottom',
+                                            labels: {
+                                                generateLabels: function(chart) {
+                                                    const data = chart.data;
+                                                    return data.labels.map((label, i) => {
+                                                        const value = data.datasets[0].data[i];
+                                                        const percentage = ((value / totalTimeWithoutLLM) * 100).toFixed(1);
+                                                        return {
+                                                            text: `${label}: ${(value/1000).toFixed(1)}s (${percentage}%)`,
+                                                            fillStyle: data.datasets[0].backgroundColor[i],
+                                                            hidden: false,
+                                                            index: i
+                                                        };
+                                                    });
+                                                }
+                                            }
+                                        },
+                                        tooltip: {
+                                            callbacks: {
+                                                label: function(context) {
+                                                    const value = context.parsed;
+                                                    const percentage = ((value / totalTimeWithoutLLM) * 100).toFixed(1);
+                                                    return `${context.label}: ${(value/1000).toFixed(1)}s (${percentage}%)`;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                        }
+
+                        // Stacked Bar Chart - Section by Section
+                        const barCtx = document.getElementById('sectionStackedChart');
+                        if (barCtx && !chartRefs.current.bar) {
+                            const sections = Object.keys(analysis.sectionMap);
+                            const readingData = sections.map(s => analysis.sectionMap[s].reading / 1000);
+                            const scanningData = sections.map(s => analysis.sectionMap[s].scanning / 1000);
+                            const scrollingData = sections.map(s => analysis.sectionMap[s].scrolling / 1000);
+
+                            chartRefs.current.bar = new Chart(barCtx, {
+                                type: 'bar',
+                                data: {
+                                    labels: sections,
+                                    datasets: [
+                                        {
+                                            label: 'Reading',
+                                            data: readingData,
+                                            backgroundColor: '#10B981',
+                                        },
+                                        {
+                                            label: 'Scanning',
+                                            data: scanningData,
+                                            backgroundColor: '#FBBF24',
+                                        },
+                                        {
+                                            label: 'Scrolling',
+                                            data: scrollingData,
+                                            backgroundColor: '#3B82F6',
+                                        }
+                                    ]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: true,
+                                    scales: {
+                                        x: { stacked: true },
+                                        y: {
+                                            stacked: true,
+                                            beginAtZero: true,
+                                            title: {
+                                                display: true,
+                                                text: 'Time (seconds)'
+                                            }
+                                        }
+                                    },
+                                    plugins: {
+                                        legend: { position: 'bottom' }
+                                    }
+                                }
+                            });
+                        }
+                    }, 100);
+                }
+            }, [view, selectedExperiment]);
+
             // Detail View
             if (view === 'detail' && selectedExperiment) {
                 const analysis = analyzeClassification(selectedExperiment.events);
+                const scrollEvents = selectedExperiment.events.filter(e => e.eventType === 'scroll_action');
+                const allEvents = selectedExperiment.events || []; // 모든 이벤트 (scroll + tab_switch)
                 
+                // Timeline calculation
+                const startEvent = selectedExperiment.events.find(e => e.eventType === 'reading_phase_start' || e.eventType === 'experiment_start');
+                const endEvent = selectedExperiment.events.find(e => e.eventType === 'reading_phase_complete');
+                const startTime = startEvent?.timestamp || (scrollEvents[0]?.timestamp || 0);
+                const endTime = endEvent?.timestamp || (scrollEvents[scrollEvents.length - 1]?.timestamp || startTime);
+                const totalDuration = endTime - startTime;
+
                 return (
                     <div className="min-h-screen bg-gray-100">
                         <div className="bg-white shadow">
@@ -129,6 +291,10 @@
                                     onClick={() => {
                                         setView('list');
                                         setSelectedExperiment(null);
+                                        Object.values(chartRefs.current).forEach(chart => {
+                                            if (chart) chart.destroy();
+                                        });
+                                        chartRefs.current = {};
                                     }}
                                     className="mb-4 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
                                 >
@@ -138,155 +304,467 @@
                                     Participant: {selectedExperiment.participantId}
                                 </h1>
                                 <p className="text-gray-600">
-                                    Condition: {selectedExperiment.condition} | 
+                                    Condition: <span className="font-semibold">{selectedExperiment.condition}</span> | 
+                                    Paper: <span className="font-semibold">{selectedExperiment.paper}</span> |
                                     Completed: {selectedExperiment.completedAt ? new Date(selectedExperiment.completedAt).toLocaleString() : 'N/A'}
                                 </p>
                             </div>
                         </div>
 
                         <div className="max-w-7xl mx-auto px-6 py-6">
-                            {/* Classification Summary */}
+                            {/* Reading Pattern Classification */}
                             {analysis && (
-                                <div className="mb-6">
-                                    <div className="bg-white rounded-lg shadow p-6">
-                                        <h2 className="text-xl font-bold mb-4">Reading Pattern Classification</h2>
-                                        
-                                        <div className="grid grid-cols-3 gap-4 mb-4">
-                                            <div className="bg-green-50 p-4 rounded">
-                                                <div className="text-3xl font-bold text-green-700">{analysis.summary.reading.count}</div>
-                                                <div className="text-sm text-gray-600">Reading Events</div>
-                                                <div className="text-lg font-semibold text-green-600 mt-1">
-                                                    {analysis.summary.reading.percentage}%
+                                <div className="bg-white rounded-lg shadow p-6 mb-6">
+                                    <h2 className="text-xl font-bold mb-6">Reading Pattern Classification</h2>
+                                    
+                                    {/* Tab Usage Distribution (맨 위, with_llm만) */}
+                                    {selectedExperiment.condition === 'with_llm' && selectedExperiment.reading?.tabTimes && (
+                                        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                                            <h3 className="text-md font-semibold mb-3">Tab Usage Distribution</h3>
+                                            
+                                            {/* Horizontal Bar */}
+                                            <div className="h-12 bg-gray-200 rounded-lg overflow-hidden flex shadow-sm mb-3">
+                                                <div 
+                                                    className="bg-blue-500 flex items-center justify-center text-white font-semibold transition-all"
+                                                    style={{
+                                                        width: `${(selectedExperiment.reading.tabTimes.reading / 
+                                                            (selectedExperiment.reading.tabTimes.reading + selectedExperiment.reading.tabTimes.ai)) * 100}%`
+                                                    }}
+                                                >
+                                                    {((selectedExperiment.reading.tabTimes.reading / 
+                                                      (selectedExperiment.reading.tabTimes.reading + selectedExperiment.reading.tabTimes.ai)) * 100) > 10 
+                                                      ? `Reading ${((selectedExperiment.reading.tabTimes.reading / 
+                                                          (selectedExperiment.reading.tabTimes.reading + selectedExperiment.reading.tabTimes.ai)) * 100).toFixed(0)}%`
+                                                      : ''}
                                                 </div>
-                                                <div className="text-xs text-gray-500 mt-1">
-                                                    {(analysis.summary.reading.duration / 1000).toFixed(1)}s
+                                                <div 
+                                                    className="bg-purple-500 flex items-center justify-center text-white font-semibold transition-all"
+                                                    style={{
+                                                        width: `${(selectedExperiment.reading.tabTimes.ai / 
+                                                            (selectedExperiment.reading.tabTimes.reading + selectedExperiment.reading.tabTimes.ai)) * 100}%`
+                                                    }}
+                                                >
+                                                    {((selectedExperiment.reading.tabTimes.ai / 
+                                                      (selectedExperiment.reading.tabTimes.reading + selectedExperiment.reading.tabTimes.ai)) * 100) > 10 
+                                                      ? `AI ${((selectedExperiment.reading.tabTimes.ai / 
+                                                          (selectedExperiment.reading.tabTimes.reading + selectedExperiment.reading.tabTimes.ai)) * 100).toFixed(0)}%`
+                                                      : ''}
                                                 </div>
                                             </div>
                                             
-                                            <div className="bg-yellow-50 p-4 rounded">
-                                                <div className="text-3xl font-bold text-yellow-700">{analysis.summary.scanning.count}</div>
-                                                <div className="text-sm text-gray-600">Scanning Events</div>
-                                                <div className="text-lg font-semibold text-yellow-600 mt-1">
-                                                    {analysis.summary.scanning.percentage}%
+                                            {/* Stats */}
+                                            <div className="grid grid-cols-2 gap-3 text-sm">
+                                                <div className="text-center">
+                                                    <span className="text-gray-600">Reading Tab: </span>
+                                                    <span className="font-bold text-blue-600">
+                                                        {(selectedExperiment.reading.tabTimes.reading / 1000 / 60).toFixed(1)}m
+                                                    </span>
                                                 </div>
-                                                <div className="text-xs text-gray-500 mt-1">
-                                                    {(analysis.summary.scanning.duration / 1000).toFixed(1)}s
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="bg-blue-50 p-4 rounded">
-                                                <div className="text-3xl font-bold text-blue-700">{analysis.summary.scrolling.count}</div>
-                                                <div className="text-sm text-gray-600">Scrolling Events</div>
-                                                <div className="text-lg font-semibold text-blue-600 mt-1">
-                                                    {analysis.summary.scrolling.percentage}%
-                                                </div>
-                                                <div className="text-xs text-gray-500 mt-1">
-                                                    {(analysis.summary.scrolling.duration / 1000).toFixed(1)}s
+                                                <div className="text-center">
+                                                    <span className="text-gray-600">AI Tab: </span>
+                                                    <span className="font-bold text-purple-600">
+                                                        {(selectedExperiment.reading.tabTimes.ai / 1000 / 60).toFixed(1)}m
+                                                    </span>
                                                 </div>
                                             </div>
+                                        </div>
+                                    )}
+                                    
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {/* Left: Pie Chart (Time-based, Reading/Scanning/Scrolling only) */}
+                                        <div>
+                                            <h3 className="text-md font-semibold mb-3 text-center">Reading Behavior Distribution (Time-based)</h3>
+                                            <canvas id="classificationPieChart"></canvas>
                                         </div>
 
-                                        {/* Progress Bar */}
-                                        <div className="h-6 bg-gray-200 rounded-full overflow-hidden flex">
-                                            <div 
-                                                className="bg-green-500 h-full flex items-center justify-center text-white text-xs font-semibold"
-                                                style={{width: `${analysis.summary.reading.percentage}%`}}
-                                            >
-                                                {analysis.summary.reading.percentage > 5 ? `${analysis.summary.reading.percentage}%` : ''}
+                                        {/* Right: Time-Based Summary (세로) */}
+                                        <div>
+                                            <h3 className="text-md font-semibold mb-3 text-center">Time-Based Summary</h3>
+                                            <div className="space-y-3">
+                                                <div className="flex items-center justify-between p-3 bg-green-50 rounded border-l-4 border-green-500">
+                                                    <span className="font-medium">Reading</span>
+                                                    <div className="text-right">
+                                                        <div className="text-xl font-bold text-green-600">
+                                                            {analysis.summary.reading.durationSec}s
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            {analysis.summary.reading.timePercentage}%
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="flex items-center justify-between p-3 bg-yellow-50 rounded border-l-4 border-yellow-500">
+                                                    <span className="font-medium">Scanning</span>
+                                                    <div className="text-right">
+                                                        <div className="text-xl font-bold text-yellow-600">
+                                                            {analysis.summary.scanning.durationSec}s
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            {analysis.summary.scanning.timePercentage}%
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="flex items-center justify-between p-3 bg-blue-50 rounded border-l-4 border-blue-500">
+                                                    <span className="font-medium">Scrolling</span>
+                                                    <div className="text-right">
+                                                        <div className="text-xl font-bold text-blue-600">
+                                                            {analysis.summary.scrolling.durationSec}s
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            {analysis.summary.scrolling.timePercentage}%
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="flex items-center justify-between p-3 bg-purple-50 rounded border-l-4 border-purple-500">
+                                                    <span className="font-medium">LLM Usage</span>
+                                                    <div className="text-right">
+                                                        <div className="text-xl font-bold text-purple-600">
+                                                            {analysis.summary.llm.durationSec}s
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            {analysis.summary.llm.timePercentage}%
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="mt-4 pt-3 border-t-2 border-gray-300 text-center">
+                                                    <span className="text-gray-700 font-medium">Total: </span>
+                                                    <span className="font-bold text-gray-900">
+                                                        {(analysis.totalDuration / 1000).toFixed(1)}s ({(analysis.totalDuration / 1000 / 60).toFixed(1)}m)
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div 
-                                                className="bg-yellow-500 h-full flex items-center justify-center text-white text-xs font-semibold"
-                                                style={{width: `${analysis.summary.scanning.percentage}%`}}
-                                            >
-                                                {analysis.summary.scanning.percentage > 5 ? `${analysis.summary.scanning.percentage}%` : ''}
-                                            </div>
-                                            <div 
-                                                className="bg-blue-500 h-full flex items-center justify-center text-white text-xs font-semibold"
-                                                style={{width: `${analysis.summary.scrolling.percentage}%`}}
-                                            >
-                                                {analysis.summary.scrolling.percentage > 5 ? `${analysis.summary.scrolling.percentage}%` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* LLM Usage Statistics (with_llm only) */}
+                            {selectedExperiment.condition === 'with_llm' && selectedExperiment.llmInteraction && (
+                                <div className="bg-white rounded-lg shadow p-6 mb-6">
+                                    <h2 className="text-xl font-bold mb-4">LLM Usage Statistics</h2>
+                                    
+                                    {/* LLM Interaction Stats */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                        <div className="p-6 bg-purple-50 rounded-lg border-l-4 border-purple-500">
+                                            <div className="text-sm text-gray-600">Total Queries</div>
+                                            <div className="text-4xl font-bold text-purple-600 mt-2">
+                                                {selectedExperiment.llmInteraction.totalQueries || 0}
                                             </div>
                                         </div>
                                         
-                                        <div className="flex justify-between text-xs text-gray-600 mt-2">
-                                            <span>📖 Reading</span>
-                                            <span>👀 Scanning</span>
-                                            <span>⚡ Scrolling</span>
+                                        <div className="p-6 bg-purple-50 rounded-lg border-l-4 border-purple-500">
+                                            <div className="text-sm text-gray-600">Average Response Time</div>
+                                            <div className="text-4xl font-bold text-purple-600 mt-2">
+                                                {((selectedExperiment.llmInteraction.avgResponseTime || 0) / 1000).toFixed(1)}s
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* Section Analysis */}
-                                    <div className="bg-white rounded-lg shadow p-6 mt-6">
-                                        <h2 className="text-xl font-bold mb-4">Section-by-Section Analysis</h2>
-                                        
-                                        <div className="space-y-4">
-                                            {Object.entries(analysis.sectionMap).map(([section, times]) => {
-                                                const total = times.reading + times.scanning + times.scrolling;
-                                                const readingPct = total > 0 ? (times.reading / total * 100) : 0;
-                                                const scanningPct = total > 0 ? (times.scanning / total * 100) : 0;
-                                                const scrollingPct = total > 0 ? (times.scrolling / total * 100) : 0;
+                                    {/* Query List */}
+                                    <div className="p-4 bg-gray-50 rounded max-h-80 overflow-y-auto">
+                                        <div className="text-sm font-semibold text-gray-700 mb-3">Questions Asked:</div>
+                                        <div className="space-y-3">
+                                            {selectedExperiment.llmInteraction.messages?.map((msg, idx) => (
+                                                <div key={idx} className="p-3 bg-white rounded border border-gray-200">
+                                                    <div className="flex items-start justify-between">
+                                                        <div className="font-medium text-gray-700 flex-1">
+                                                            <span className="text-purple-600 font-bold">Q{idx + 1}:</span> {msg.question?.substring(0, 150)}{msg.question?.length > 150 ? '...' : ''}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500 ml-4 whitespace-nowrap">
+                                                            {(msg.responseTime / 1000).toFixed(1)}s
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )) || <div className="text-center text-gray-500">No messages recorded</div>}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
+                            {/* Section-by-Section Analysis */}
+                            {analysis && (
+                                <div className="bg-white rounded-lg shadow p-6 mb-6">
+                                    <h2 className="text-xl font-bold mb-4">Time Spent by Section (with Reading Patterns)</h2>
+                                    <canvas id="sectionStackedChart"></canvas>
+                                </div>
+                            )}
+
+                            {/* Reading Session Timeline */}
+                            <div className="bg-white rounded-lg shadow p-6 mb-6">
+                                <h2 className="text-xl font-bold mb-4">Reading Session Timeline</h2>
+                                {scrollEvents.length > 0 ? (
+                                    <div>
+                                        <div className="mb-4 text-sm text-gray-600">
+                                            <span>Session: {new Date(startTime).toLocaleTimeString()} - {new Date(endTime).toLocaleTimeString()}</span>
+                                            <span className="ml-4">Duration: {(totalDuration / 1000 / 60).toFixed(1)} minutes</span>
+                                            <span className="ml-4">Events: {scrollEvents.length}</span>
+                                        </div>
+                                        
+                                        <div className="relative bg-gray-50 rounded-lg border border-gray-300 p-4 overflow-x-auto" style={{minHeight: '250px'}}>
+                                            {/* Base timeline */}
+                                            <div className="absolute bottom-12 left-8 right-8 h-2 bg-gray-300 rounded"></div>
+                                            
+                                            {/* Time markers */}
+                                            {[0, 0.25, 0.5, 0.75, 1].map(fraction => (
+                                                <div key={fraction} className="absolute bottom-12" style={{left: `${8 + fraction * 84}%`}}>
+                                                    <div className="w-px h-4 bg-gray-500 -mb-4"></div>
+                                                    <div className="text-xs text-gray-600 mt-1 -ml-8 text-center w-16">
+                                                        {((fraction * totalDuration) / 1000 / 60).toFixed(1)}m
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            
+                                            {/* Events with pause and scroll segments */}
+                                            {scrollEvents.map((event, idx) => {
+                                                const eventTime = event.timestamp - startTime;
+                                                const eventPosition = (eventTime / totalDuration) * 84 + 8;
+                                                
+                                                const pauseDur = event.pauseDuration || 0;
+                                                const scrollDur = event.scrollDuration || 0;
+                                                const totalDur = pauseDur + scrollDur;
+                                                
+                                                const pauseStartTime = eventTime - totalDur;
+                                                const scrollStartTime = eventTime - scrollDur;
+                                                
+                                                const pauseStartPos = Math.max(8, (pauseStartTime / totalDuration) * 84 + 8);
+                                                const scrollStartPos = Math.max(8, (scrollStartTime / totalDuration) * 84 + 8);
+                                                
+                                                const colorMap = {
+                                                    reading: '#10B981',
+                                                    scanning: '#FBBF24',
+                                                    scrolling: '#3B82F6',
+                                                    llm: '#8B5CF6'
+                                                };
+                                                const color = colorMap[event.classification] || '#6B7280';
+                                                
                                                 return (
-                                                    <div key={section} className="border-b pb-3">
-                                                        <div className="flex justify-between mb-2">
-                                                            <span className="font-medium">{section}</span>
-                                                            <span className="text-sm text-gray-500">
-                                                                {(total / 1000).toFixed(1)}s
-                                                            </span>
-                                                        </div>
-                                                        <div className="h-4 bg-gray-200 rounded-full overflow-hidden flex">
-                                                            <div className="bg-green-500 h-full" style={{width: `${readingPct}%`}}></div>
-                                                            <div className="bg-yellow-500 h-full" style={{width: `${scanningPct}%`}}></div>
-                                                            <div className="bg-blue-500 h-full" style={{width: `${scrollingPct}%`}}></div>
-                                                        </div>
-                                                        <div className="flex justify-between text-xs text-gray-600 mt-1">
-                                                            <span>📖 {readingPct.toFixed(0)}%</span>
-                                                            <span>👀 {scanningPct.toFixed(0)}%</span>
-                                                            <span>⚡ {scrollingPct.toFixed(0)}%</span>
+                                                    <div key={`scroll-${idx}`}>
+                                                        {/* Pause segment (colored) */}
+                                                        {pauseDur > 0 && (
+                                                            <div
+                                                                className="absolute bottom-12 h-2 opacity-70 group"
+                                                                style={{
+                                                                    left: `${pauseStartPos}%`,
+                                                                    width: `${scrollStartPos - pauseStartPos}%`,
+                                                                    backgroundColor: color,
+                                                                    borderRadius: '2px'
+                                                                }}
+                                                            >
+                                                                <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-20">
+                                                                    <div><strong>{event.classification} - Pause</strong></div>
+                                                                    <div>{(pauseDur / 1000).toFixed(2)}s</div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        
+                                                        {/* Scroll segment (gray) */}
+                                                        {scrollDur > 0 && (
+                                                            <div
+                                                                className="absolute bottom-12 h-2 bg-gray-400 opacity-50 group"
+                                                                style={{
+                                                                    left: `${scrollStartPos}%`,
+                                                                    width: `${eventPosition - scrollStartPos}%`,
+                                                                    borderRadius: '2px'
+                                                                }}
+                                                            >
+                                                                <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-20">
+                                                                    <div><strong>Scroll Motion</strong></div>
+                                                                    <div>{(scrollDur / 1000).toFixed(2)}s</div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        
+                                                        {/* Event dot */}
+                                                        <div
+                                                            className="absolute bottom-12 group cursor-pointer"
+                                                            style={{
+                                                                left: `${eventPosition}%`,
+                                                                transform: 'translate(-50%, -50%)'
+                                                            }}
+                                                        >
+                                                            <div 
+                                                                className="w-4 h-4 rounded-full border-2 border-white shadow-lg"
+                                                                style={{backgroundColor: color}}
+                                                            ></div>
+                                                            
+                                                            {/* Event number */}
+                                                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-gray-600">
+                                                                #{idx + 1}
+                                                            </div>
+                                                            
+                                                            {/* Detailed tooltip */}
+                                                            <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-8 px-4 py-3 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-30 shadow-xl">
+                                                                <div className="font-bold text-sm mb-2">Event #{idx + 1}</div>
+                                                                <div className="space-y-1">
+                                                                    <div><strong>Classification:</strong> {event.classification}</div>
+                                                                    <div><strong>Time:</strong> {new Date(event.timestamp).toLocaleTimeString()}</div>
+                                                                    <div><strong>Section:</strong> {event.sectionBeforeScroll || event.currentSection}</div>
+                                                                    <div><strong>Pause:</strong> {(pauseDur / 1000).toFixed(2)}s</div>
+                                                                    <div><strong>Scroll:</strong> {(scrollDur / 1000).toFixed(2)}s</div>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 );
                                             })}
-                                        </div>
-                                    </div>
-
-                                    {/* Event Timeline */}
-                                    <div className="bg-white rounded-lg shadow p-6 mt-6">
-                                        <h2 className="text-xl font-bold mb-4">Recent Events (Last 30)</h2>
-                                        
-                                        <div className="space-y-2 max-h-96 overflow-y-auto">
-                                            {(selectedExperiment.events || [])
-                                                .filter(e => e.eventType === 'scroll_action')
-                                                .slice(0, 30)
+                                            
+                                            {/* LLM segments (tab_switch events with classification='llm') */}
+                                            {allEvents
+                                                .filter(e => e.eventType === 'tab_switch' && e.classification === 'llm')
                                                 .map((event, idx) => {
-                                                    const colorMap = {
-                                                        reading: 'bg-green-100 border-green-300',
-                                                        scanning: 'bg-yellow-100 border-yellow-300',
-                                                        scrolling: 'bg-blue-100 border-blue-300'
-                                                    };
-
+                                                    const eventTime = event.timestamp - startTime;
+                                                    const llmDuration = event.llmDuration || event.timeOnPreviousTab || 0;
+                                                    
+                                                    const llmStartTime = eventTime - llmDuration;
+                                                    const llmEndTime = eventTime;
+                                                    
+                                                    const llmStartPos = Math.max(8, (llmStartTime / totalDuration) * 84 + 8);
+                                                    const llmEndPos = Math.min(92, (llmEndTime / totalDuration) * 84 + 8);
+                                                    
                                                     return (
-                                                        <div key={idx} className={`p-3 rounded border ${colorMap[event.classification]}`}>
-                                                            <div className="flex justify-between items-center">
-                                                                <span className="font-semibold text-xs uppercase">
-                                                                    {event.classification}
-                                                                </span>
-                                                                <span className="text-xs">
-                                                                    {event.sectionBeforeScroll || event.currentSection}
-                                                                </span>
+                                                        <div key={`llm-${idx}`}>
+                                                            {/* LLM segment (purple) */}
+                                                            <div
+                                                                className="absolute bottom-12 h-2 opacity-80 group"
+                                                                style={{
+                                                                    left: `${llmStartPos}%`,
+                                                                    width: `${llmEndPos - llmStartPos}%`,
+                                                                    backgroundColor: '#8B5CF6',
+                                                                    borderRadius: '2px'
+                                                                }}
+                                                            >
+                                                                <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-20">
+                                                                    <div><strong>🤖 LLM Usage</strong></div>
+                                                                    <div>{(llmDuration / 1000).toFixed(2)}s</div>
+                                                                </div>
                                                             </div>
-                                                            <div className="text-xs mt-1 text-gray-600">
-                                                                Pause: {(event.pauseDuration / 1000).toFixed(1)}s | 
-                                                                Scroll: {(event.scrollDuration / 1000).toFixed(1)}s
+                                                            
+                                                            {/* LLM marker */}
+                                                            <div
+                                                                className="absolute bottom-12 group cursor-pointer"
+                                                                style={{
+                                                                    left: `${llmEndPos}%`,
+                                                                    transform: 'translate(-50%, -50%)'
+                                                                }}
+                                                            >
+                                                                <div 
+                                                                    className="w-4 h-4 rounded-full border-2 border-white shadow-lg"
+                                                                    style={{backgroundColor: '#8B5CF6'}}
+                                                                ></div>
+                                                                
+                                                                {/* Tooltip */}
+                                                                <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-8 px-4 py-3 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-30 shadow-xl">
+                                                                    <div className="font-bold text-sm mb-2">🤖 LLM Usage</div>
+                                                                    <div className="space-y-1">
+                                                                        <div><strong>Duration:</strong> {(llmDuration / 1000).toFixed(2)}s</div>
+                                                                        <div><strong>Time:</strong> {new Date(event.timestamp).toLocaleTimeString()}</div>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     );
                                                 })
                                             }
+                                            
+                                            {/* Legend */}
+                                            <div className="absolute top-4 right-4 space-y-1 text-xs bg-white p-2 rounded border">
+                                                <div className="flex items-center">
+                                                    <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
+                                                    <span>Reading</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <div className="w-3 h-3 bg-yellow-500 rounded mr-2"></div>
+                                                    <span>Scanning</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <div className="w-3 h-3 bg-blue-500 rounded mr-2"></div>
+                                                    <span>Scrolling</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <div className="w-3 h-3 bg-purple-500 rounded mr-2"></div>
+                                                    <span>🤖 LLM</span>
+                                                </div>
+                                                <div className="flex items-center pt-1 border-t">
+                                                    <div className="w-3 h-3 bg-gray-400 rounded mr-2"></div>
+                                                    <span>Scroll Motion</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
+                                ) : (
+                                    <p className="text-gray-500">No scroll events recorded</p>
+                                )}
+                            </div>
+
+                            {/* Event Log */}
+                            <div className="bg-white rounded-lg shadow p-6">
+                                <h2 className="text-xl font-bold mb-4">Event Log (Chronological)</h2>
+                                <div className="max-h-96 overflow-y-auto">
+                                    <table className="min-w-full text-sm">
+                                        <thead className="bg-gray-50 sticky top-0">
+                                            <tr>
+                                                <th className="px-4 py-2 text-left font-medium text-gray-700">#</th>
+                                                <th className="px-4 py-2 text-left font-medium text-gray-700">Time</th>
+                                                <th className="px-4 py-2 text-left font-medium text-gray-700">Event Type</th>
+                                                <th className="px-4 py-2 text-left font-medium text-gray-700">Classification</th>
+                                                <th className="px-4 py-2 text-left font-medium text-gray-700">Section</th>
+                                                <th className="px-4 py-2 text-left font-medium text-gray-700">Pause</th>
+                                                <th className="px-4 py-2 text-left font-medium text-gray-700">Scroll</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200">
+                                            {selectedExperiment.events
+                                                .sort((a, b) => a.timestamp - b.timestamp)
+                                                .map((event, idx) => {
+                                                    const colorMap = {
+                                                        reading: 'bg-green-50',
+                                                        scanning: 'bg-yellow-50',
+                                                        scrolling: 'bg-blue-50'
+                                                    };
+                                                    
+                                                    return (
+                                                        <tr key={idx} className={`hover:bg-gray-50 ${colorMap[event.classification] || ''}`}>
+                                                            <td className="px-4 py-2 text-gray-600">#{idx + 1}</td>
+                                                            <td className="px-4 py-2 whitespace-nowrap">
+                                                                {new Date(event.timestamp).toLocaleTimeString()}
+                                                            </td>
+                                                            <td className="px-4 py-2">
+                                                                <span className="px-2 py-1 bg-gray-100 rounded text-xs">
+                                                                    {event.eventType}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-2">
+                                                                {event.classification && (
+                                                                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                                                        event.classification === 'reading' ? 'bg-green-100 text-green-800' :
+                                                                        event.classification === 'scanning' ? 'bg-yellow-100 text-yellow-800' :
+                                                                        event.classification === 'scrolling' ? 'bg-blue-100 text-blue-800' :
+                                                                        'bg-gray-100 text-gray-800'
+                                                                    }`}>
+                                                                        {event.classification}
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-4 py-2 text-gray-700">
+                                                                {event.sectionBeforeScroll || event.currentSection || '-'}
+                                                            </td>
+                                                            <td className="px-4 py-2 text-gray-600">
+                                                                {event.pauseDuration ? `${(event.pauseDuration / 1000).toFixed(2)}s` : '-'}
+                                                            </td>
+                                                            <td className="px-4 py-2 text-gray-600">
+                                                                {event.scrollDuration ? `${(event.scrollDuration / 1000).toFixed(2)}s` : '-'}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            }
+                                        </tbody>
+                                    </table>
                                 </div>
-                            )}
+                            </div>
                         </div>
                     </div>
                 );
