@@ -26,17 +26,27 @@ jobs:
       
       - name: Inject API Key into index.html
         run: |
+          echo "Before injection:"
+          grep "const apiKey" index.html || echo "Pattern not found"
           sed -i "s|__OPENAI_API_KEY__|${{ secrets.OPENAI_API_KEY }}|g" index.html
+          echo "After injection:"
+          grep "const apiKey" index.html || echo "Pattern not found"
           echo "✅ API key injected into index.html"
           
       - name: Verify injection
         run: |
           if grep -q "__OPENAI_API_KEY__" index.html; then
             echo "❌ ERROR: API key placeholder still exists!"
+            grep -n "__OPENAI_API_KEY__" index.html
             exit 1
           else
             echo "✅ API key placeholder replaced successfully"
           fi
+      
+      - name: Debug - Check file content before upload
+        run: |
+          echo "Checking index.html content before upload:"
+          grep -A 2 "const apiKey" index.html | head -5
       
       - name: Setup Pages
         uses: actions/configure-pages@v4
