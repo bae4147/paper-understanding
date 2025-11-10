@@ -318,7 +318,7 @@
                                     <h2 className="text-xl font-bold mb-6">Reading Pattern Classification</h2>
                                     
                                     {/* Tab Usage Distribution (맨 위, with_llm만) */}
-                                    {selectedExperiment.condition === 'with_llm' && analysis && (
+                                    {selectedExperiment.condition === 'with_llm' && selectedExperiment.reading?.duration && (
                                         <div className="mb-6 p-4 bg-gray-50 rounded-lg">
                                             <h3 className="text-md font-semibold mb-3">Tab Usage Distribution</h3>
                                             
@@ -384,6 +384,34 @@
                                             })()}
                                         </div>
                                     )}
+                                    
+                                    {/* Interaction Count Cards */}
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                        <div className="flex items-center justify-between p-3 bg-green-50 rounded border-l-4 border-green-500">
+                                            <span className="font-medium text-sm">Reading</span>
+                                            <span className="text-2xl font-bold text-green-600">
+                                                {analysis.summary.reading.count}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 bg-yellow-50 rounded border-l-4 border-yellow-500">
+                                            <span className="font-medium text-sm">Scanning</span>
+                                            <span className="text-2xl font-bold text-yellow-600">
+                                                {analysis.summary.scanning.count}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 bg-blue-50 rounded border-l-4 border-blue-500">
+                                            <span className="font-medium text-sm">Scrolling</span>
+                                            <span className="text-2xl font-bold text-blue-600">
+                                                {analysis.summary.scrolling.count}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 bg-purple-50 rounded border-l-4 border-purple-500">
+                                            <span className="font-medium text-sm">LLM</span>
+                                            <span className="text-2xl font-bold text-purple-600">
+                                                {analysis.summary.llm.count}
+                                            </span>
+                                        </div>
+                                    </div>
                                     
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                         {/* Left: Pie Chart (Time-based, Reading/Scanning/Scrolling only) */}
