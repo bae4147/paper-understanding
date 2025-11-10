@@ -168,7 +168,7 @@
             const lastEventTime = useRef(Date.now());
             const pdfContainerRef = useRef(null);
             const scrollTimeoutRef = useRef(null);
-            const lastScrollTimeRef = useRef(Date.now());
+            const lastActivityTimeRef = useRef(Date.now()); // 마지막 활동 시간 (scroll stop 또는 tab return)
             const scrollStartTimeRef = useRef(null); // Track when scroll starts
             const isScrollingRef = useRef(false); // Track if currently scrolling
             const sectionBeforeScrollRef = useRef('Introduction'); // 스크롤 시작 전 섹션
@@ -293,9 +293,45 @@
             const switchTab = (newTab) => {
                 if (newTab === activeTab) return;
                 
+                const now = Date.now();
+                
+                // LLM 탭으로 전환: reading 타이머 중단 및 현재 구간 저장
+                if (newTab === 'ai' && activeTab === 'reading') {
+                    const pauseDuration = now - lastActivityTimeRef.current;
+                    
+                    let classification;
+                    if (pauseDuration > 5000) {
+                        classification = 'reading';
+                    } else if (pauseDuration > 2000) {
+                        classification = 'scanning';
+                    } else {
+                        classification = 'scrolling';
+                    }
+                    
+                    logEvent('scroll_action', {
+                        scrollY: pdfContainerRef.current?.scrollTop || 0,
+                        sectionBeforeScroll: currentSection,
+                        sectionAfterScroll: currentSection,
+                        classification: classification,
+                        pauseDuration: pauseDuration,
+                        scrollDuration: 0,
+                        isTabSwitch: true,
+                        timestamp: now
+                    });
+                    
+                    console.log(`🔄 [TAB → AI] Saved ${classification}: ${pauseDuration}ms at "${currentSection}"`);
+                }
+                
+                // Reading 탭으로 복귀: 타이머 재시작
+                if (newTab === 'reading' && activeTab === 'ai') {
+                    lastActivityTimeRef.current = now;
+                    console.log(`🔄 [TAB → READING] Timer restarted`);
+                }
+                
                 // 현재 reading 탭이면 스크롤 위치 저장
                 if (activeTab === 'reading' && pdfContainerRef.current) {
                     savedScrollPosition.current = pdfContainerRef.current.scrollTop;
+                    console.log(`💾 Saved scroll: ${savedScrollPosition.current}px`);
                 }
                 
                 // Record time spent on current tab
@@ -305,12 +341,21 @@
                     [activeTab]: prev[activeTab] + elapsed
                 }));
                 
-                // Log tab switch
-                logEvent('tab_switch', {
+                // Log tab switch with LLM classification
+                const switchEventData = {
                     from: activeTab,
                     to: newTab,
                     timeOnPreviousTab: elapsed
-                });
+                };
+                
+                // AI 탭에서 나가는 경우 → LLM duration으로 분류
+                if (activeTab === 'ai') {
+                    switchEventData.classification = 'llm';
+                    switchEventData.llmDuration = elapsed;
+                    console.log(`🤖 [LLM] duration: ${elapsed}ms`);
+                }
+                
+                logEvent('tab_switch', switchEventData);
                 
                 // Switch to new tab
                 setActiveTab(newTab);
@@ -319,10 +364,11 @@
                 // reading 탭으로 돌아오면 스크롤 위치 복원
                 if (newTab === 'reading') {
                     setTimeout(() => {
-                        if (pdfContainerRef.current) {
+                        if (pdfContainerRef.current && savedScrollPosition.current > 0) {
                             pdfContainerRef.current.scrollTop = savedScrollPosition.current;
+                            console.log(`📍 Restored scroll: ${savedScrollPosition.current}px`);
                         }
-                    }, 0);
+                    }, 100);
                 }
             };
 
@@ -351,9 +397,9 @@
                     // 스크롤 시작 전 섹션 저장 (여기서 읽기가 발생함!)
                     sectionBeforeScrollRef.current = currentSection;
                     
-                    // 첫 스크롤이면 lastScrollTimeRef 초기화
-                    if (lastScrollTimeRef.current === 0) {
-                        lastScrollTimeRef.current = now;
+                    // 첫 스크롤이면 lastActivityTimeRef 초기화
+                    if (lastActivityTimeRef.current === 0) {
+                        lastActivityTimeRef.current = now;
                     }
                 }
 
@@ -371,7 +417,7 @@
                     const scrollDuration = scrollStopTime - scrollStartTimeRef.current;
                     
                     // 2. 이전 멈춤 ~ 이번 스크롤 시작 사이의 시간 (= 읽기/멈춰있던 시간)
-                    const pauseBeforeScroll = scrollStartTimeRef.current - lastScrollTimeRef.current;
+                    const pauseBeforeScroll = scrollStartTimeRef.current - lastActivityTimeRef.current;
                     
                     // === 행동 분류 (이전 멈춤 시간 기준) ===
                     let classification;
@@ -401,7 +447,7 @@
                     console.log(`🔍 [${classification.toUpperCase()}] pause: ${pauseBeforeScroll}ms at "${sectionWhereReadingOccurred}", scroll: ${scrollDuration}ms to "${sectionAfterScroll}"`);
 
                     // === 상태 업데이트 ===
-                    lastScrollTimeRef.current = scrollStopTime;
+                    lastActivityTimeRef.current = scrollStopTime;
                     isScrollingRef.current = false;
                 }, 200);
             };
@@ -608,7 +654,7 @@
                 
                 setPhase('reading');
                 setReadingActive(true);
-                lastScrollTimeRef.current = Date.now(); // Initialize scroll timer
+                lastActivityTimeRef.current = Date.now(); // Initialize scroll timer
                 
                 // Firebase: 실험 문서 생성
                 try {
@@ -644,7 +690,7 @@
                 
                 // 마지막 읽기 구간 강제 로깅 (Finish 버튼 누르기 직전)
                 const now = Date.now();
-                const finalPauseDuration = now - lastScrollTimeRef.current;
+                const finalPauseDuration = now - lastActivityTimeRef.current;
                 
                 let finalClassification;
                 if (finalPauseDuration > 5000) {
