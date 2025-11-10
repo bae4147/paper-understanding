@@ -28,7 +28,10 @@ jobs:
         run: |
           echo "Before injection:"
           grep "const apiKey" index.html || echo "Pattern not found"
-          sed -i "s|__OPENAI_API_KEY__|${{ secrets.OPENAI_API_KEY }}|g" index.html
+          
+          # Use perl instead of sed for more reliable replacement
+          perl -i -pe "s/__OPENAI_API_KEY__/${{ secrets.OPENAI_API_KEY }}/g" index.html
+          
           echo "After injection:"
           grep "const apiKey" index.html || echo "Pattern not found"
           echo "✅ API key injected into index.html"
