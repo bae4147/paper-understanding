@@ -693,6 +693,9 @@
                 console.log(`   Current section: ${currentSection}`);
                 console.log(`   Last activity time: ${lastActivityTimeRef.current}`);
                 
+                // 마지막 이벤트 준비
+                let finalEvent = null;
+                
                 // 마지막 읽기 구간 강제 로깅 (Finish 버튼 누르기 직전)
                 // Reading 탭에 있을 때만 기록
                 if (activeTab === 'reading') {
@@ -710,16 +713,32 @@
                         finalClassification = 'scrolling';
                     }
                     
-                    logEvent('scroll_action', {
+                    // 마지막 이벤트 객체 생성
+                    finalEvent = {
+                        timestamp: now,
+                        eventType: 'scroll_action',
+                        phase: 'reading',
+                        timeSinceLast: now - lastEventTime.current,
+                        participantId,
+                        sessionId,
+                        condition,
+                        paper: currentPaper,
                         scrollY: pdfContainerRef.current?.scrollTop || 0,
                         sectionBeforeScroll: currentSection,
                         sectionAfterScroll: currentSection,
                         classification: finalClassification,
                         pauseDuration: finalPauseDuration,
                         scrollDuration: 0,
-                        isFinalSegment: true,  // 마지막 구간 표시
-                        timestamp: now
-                    });
+                        isFinalSegment: true
+                    };
+                    
+                    // State에도 추가 (UI용)
+                    setEvents(prev => [...prev, finalEvent]);
+                    
+                    // localStorage에도 추가
+                    const storedEvents = JSON.parse(localStorage.getItem('experimentEvents') || '[]');
+                    storedEvents.push(finalEvent);
+                    localStorage.setItem('experimentEvents', JSON.stringify(storedEvents));
                     
                     console.log(`🏁 [FINAL ${finalClassification.toUpperCase()}] pause: ${finalPauseDuration}ms at "${currentSection}"`);
                 } else {
@@ -729,14 +748,28 @@
                     
                     console.log(`   Final LLM duration: ${finalLLMDuration}ms`);
                     
-                    logEvent('tab_switch', {
+                    finalEvent = {
+                        timestamp: now,
+                        eventType: 'tab_switch',
+                        phase: 'reading',
+                        timeSinceLast: now - lastEventTime.current,
+                        participantId,
+                        sessionId,
+                        condition,
+                        paper: currentPaper,
                         from: activeTab,
                         to: 'finish',
                         timeOnPreviousTab: finalLLMDuration,
                         classification: 'llm',
                         llmDuration: finalLLMDuration,
                         isFinalSegment: true
-                    });
+                    };
+                    
+                    setEvents(prev => [...prev, finalEvent]);
+                    
+                    const storedEvents = JSON.parse(localStorage.getItem('experimentEvents') || '[]');
+                    storedEvents.push(finalEvent);
+                    localStorage.setItem('experimentEvents', JSON.stringify(storedEvents));
                     
                     console.log(`🏁 [FINAL LLM] duration: ${finalLLMDuration}ms`);
                 }
@@ -809,13 +842,19 @@
                             `users/${participantId}/experiments/${sessionId}`
                         );
                         
-                        // Reading phase의 모든 이벤트 필터링
-                        const readingEvents = events.filter(e => 
+                        // Reading phase의 모든 이벤트 필터링 (마지막 이벤트 포함)
+                        let readingEvents = events.filter(e => 
                             e.phase === 'reading' && 
                             (e.eventType === 'scroll_action' || 
                              e.eventType === 'tab_switch' ||
                              e.eventType === 'text_selection')
                         );
+                        
+                        // 마지막 이벤트 명시적으로 추가
+                        if (finalEvent) {
+                            readingEvents = [...readingEvents, finalEvent];
+                            console.log(`   Including final event in Firebase save. Total events: ${readingEvents.length}`);
+                        }
                         
                         const updateData = {
                             'reading.duration': readingDuration,
