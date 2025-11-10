@@ -24,11 +24,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Inject API Key
+      - name: Inject API Key into index.html
         run: |
-          sed -i 's/__OPENAI_API_KEY__/${{ secrets.OPENAI_API_KEY }}/g' index.html
-          echo "API key injection completed"
-          grep -o "const apiKey = '.*';" index.html || echo "Pattern not found"
+          sed -i "s|__OPENAI_API_KEY__|${{ secrets.OPENAI_API_KEY }}|g" index.html
+          echo "✅ API key injected into index.html"
+          
+      - name: Verify injection
+        run: |
+          if grep -q "__OPENAI_API_KEY__" index.html; then
+            echo "❌ ERROR: API key placeholder still exists!"
+            exit 1
+          else
+            echo "✅ API key placeholder replaced successfully"
+          fi
       
       - name: Setup Pages
         uses: actions/configure-pages@v4
