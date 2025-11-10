@@ -318,57 +318,100 @@
                                     <h2 className="text-xl font-bold mb-6">Reading Pattern Classification</h2>
                                     
                                     {/* Tab Usage Distribution (맨 위, with_llm만) */}
-                                    {selectedExperiment.condition === 'with_llm' && selectedExperiment.reading?.tabTimes && (
+                                    {selectedExperiment.condition === 'with_llm' && selectedExperiment.reading?.duration && (
                                         <div className="mb-6 p-4 bg-gray-50 rounded-lg">
                                             <h3 className="text-md font-semibold mb-3">Tab Usage Distribution</h3>
                                             
-                                            {/* Horizontal Bar */}
-                                            <div className="h-12 bg-gray-200 rounded-lg overflow-hidden flex shadow-sm mb-3">
-                                                <div 
-                                                    className="bg-blue-500 flex items-center justify-center text-white font-semibold transition-all"
-                                                    style={{
-                                                        width: `${(selectedExperiment.reading.tabTimes.reading / 
-                                                            (selectedExperiment.reading.tabTimes.reading + selectedExperiment.reading.tabTimes.ai)) * 100}%`
-                                                    }}
-                                                >
-                                                    {((selectedExperiment.reading.tabTimes.reading / 
-                                                      (selectedExperiment.reading.tabTimes.reading + selectedExperiment.reading.tabTimes.ai)) * 100) > 10 
-                                                      ? `Reading ${((selectedExperiment.reading.tabTimes.reading / 
-                                                          (selectedExperiment.reading.tabTimes.reading + selectedExperiment.reading.tabTimes.ai)) * 100).toFixed(0)}%`
-                                                      : ''}
-                                                </div>
-                                                <div 
-                                                    className="bg-purple-500 flex items-center justify-center text-white font-semibold transition-all"
-                                                    style={{
-                                                        width: `${(selectedExperiment.reading.tabTimes.ai / 
-                                                            (selectedExperiment.reading.tabTimes.reading + selectedExperiment.reading.tabTimes.ai)) * 100}%`
-                                                    }}
-                                                >
-                                                    {((selectedExperiment.reading.tabTimes.ai / 
-                                                      (selectedExperiment.reading.tabTimes.reading + selectedExperiment.reading.tabTimes.ai)) * 100) > 10 
-                                                      ? `AI ${((selectedExperiment.reading.tabTimes.ai / 
-                                                          (selectedExperiment.reading.tabTimes.reading + selectedExperiment.reading.tabTimes.ai)) * 100).toFixed(0)}%`
-                                                      : ''}
-                                                </div>
-                                            </div>
-                                            
-                                            {/* Stats */}
-                                            <div className="grid grid-cols-2 gap-3 text-sm">
-                                                <div className="text-center">
-                                                    <span className="text-gray-600">Reading Tab: </span>
-                                                    <span className="font-bold text-blue-600">
-                                                        {(selectedExperiment.reading.tabTimes.reading / 1000 / 60).toFixed(1)}m
-                                                    </span>
-                                                </div>
-                                                <div className="text-center">
-                                                    <span className="text-gray-600">AI Tab: </span>
-                                                    <span className="font-bold text-purple-600">
-                                                        {(selectedExperiment.reading.tabTimes.ai / 1000 / 60).toFixed(1)}m
-                                                    </span>
-                                                </div>
-                                            </div>
+                                            {(() => {
+                                                // Reading tab time = Reading + Scanning + Scrolling 행동 시간
+                                                const readingTabTime = analysis.summary.reading.duration + 
+                                                                      analysis.summary.scanning.duration + 
+                                                                      analysis.summary.scrolling.duration;
+                                                // AI tab time = LLM 시간
+                                                const aiTabTime = analysis.summary.llm.duration;
+                                                const totalTime = readingTabTime + aiTabTime;
+                                                
+                                                const readingPercent = totalTime > 0 ? (readingTabTime / totalTime * 100) : 0;
+                                                const aiPercent = totalTime > 0 ? (aiTabTime / totalTime * 100) : 0;
+                                                
+                                                return (
+                                                    <>
+                                                        {/* Horizontal Bar */}
+                                                        <div className="h-12 bg-gray-200 rounded-lg overflow-hidden flex shadow-sm mb-3">
+                                                            <div 
+                                                                className="bg-blue-500 flex items-center justify-center text-white font-semibold transition-all"
+                                                                style={{ width: `${readingPercent}%` }}
+                                                            >
+                                                                {readingPercent > 10 ? `Reading ${readingPercent.toFixed(0)}%` : ''}
+                                                            </div>
+                                                            <div 
+                                                                className="bg-purple-500 flex items-center justify-center text-white font-semibold transition-all"
+                                                                style={{ width: `${aiPercent}%` }}
+                                                            >
+                                                                {aiPercent > 10 ? `AI ${aiPercent.toFixed(0)}%` : ''}
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {/* Stats */}
+                                                        <div className="grid grid-cols-3 gap-3 text-sm">
+                                                            <div className="text-center">
+                                                                <span className="text-gray-600">Reading Tab: </span>
+                                                                <span className="font-bold text-blue-600">
+                                                                    {(readingTabTime / 1000 / 60).toFixed(1)}m
+                                                                </span>
+                                                                <span className="text-xs text-gray-500 ml-1">
+                                                                    ({readingPercent.toFixed(0)}%)
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-center">
+                                                                <span className="text-gray-600">AI Tab: </span>
+                                                                <span className="font-bold text-purple-600">
+                                                                    {(aiTabTime / 1000 / 60).toFixed(1)}m
+                                                                </span>
+                                                                <span className="text-xs text-gray-500 ml-1">
+                                                                    ({aiPercent.toFixed(0)}%)
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-center">
+                                                                <span className="text-gray-600">Total Session: </span>
+                                                                <span className="font-bold text-gray-700">
+                                                                    {(selectedExperiment.reading.duration / 1000 / 60).toFixed(1)}m
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     )}
+                                    
+                                    {/* Interaction Count Cards */}
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                        <div className="flex items-center justify-between p-3 bg-green-50 rounded border-l-4 border-green-500">
+                                            <span className="font-medium text-sm">Reading</span>
+                                            <span className="text-2xl font-bold text-green-600">
+                                                {analysis.summary.reading.count}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 bg-yellow-50 rounded border-l-4 border-yellow-500">
+                                            <span className="font-medium text-sm">Scanning</span>
+                                            <span className="text-2xl font-bold text-yellow-600">
+                                                {analysis.summary.scanning.count}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 bg-blue-50 rounded border-l-4 border-blue-500">
+                                            <span className="font-medium text-sm">Scrolling</span>
+                                            <span className="text-2xl font-bold text-blue-600">
+                                                {analysis.summary.scrolling.count}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 bg-purple-50 rounded border-l-4 border-purple-500">
+                                            <span className="font-medium text-sm">LLM</span>
+                                            <span className="text-2xl font-bold text-purple-600">
+                                                {analysis.summary.llm.count}
+                                            </span>
+                                        </div>
+                                    </div>
                                     
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                         {/* Left: Pie Chart (Time-based, Reading/Scanning/Scrolling only) */}

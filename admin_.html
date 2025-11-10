@@ -519,206 +519,244 @@
                                 <h2 className="text-xl font-bold mb-4">Reading Session Timeline</h2>
                                 {scrollEvents.length > 0 ? (
                                     <div>
-                                        <div className="mb-4 text-sm text-gray-600">
-                                            <span>Session: {new Date(startTime).toLocaleTimeString()} - {new Date(endTime).toLocaleTimeString()}</span>
-                                            <span className="ml-4">Duration: {(totalDuration / 1000 / 60).toFixed(1)} minutes</span>
-                                            <span className="ml-4">Events: {scrollEvents.length}</span>
+                                        <div className="mb-4 text-sm text-gray-600 flex justify-between items-center">
+                                            <div>
+                                                <span>Session: {new Date(startTime).toLocaleTimeString()} - {new Date(endTime).toLocaleTimeString()}</span>
+                                                <span className="ml-4">Duration: {(totalDuration / 1000 / 60).toFixed(1)} minutes</span>
+                                                <span className="ml-4">Events: {scrollEvents.length}</span>
+                                            </div>
+                                            <div className="text-gray-500">
+                                                Scale: 10 sec = 100px | Scroll →
+                                            </div>
                                         </div>
                                         
+                                        {/* Scrollable container with fixed scale */}
                                         <div className="relative bg-gray-50 rounded-lg border border-gray-300 p-4 overflow-x-auto" style={{minHeight: '250px'}}>
-                                            {/* Base timeline */}
-                                            <div className="absolute bottom-12 left-8 right-8 h-2 bg-gray-300 rounded"></div>
-                                            
-                                            {/* Time markers */}
-                                            {[0, 0.25, 0.5, 0.75, 1].map(fraction => (
-                                                <div key={fraction} className="absolute bottom-12" style={{left: `${8 + fraction * 84}%`}}>
-                                                    <div className="w-px h-4 bg-gray-500 -mb-4"></div>
-                                                    <div className="text-xs text-gray-600 mt-1 -ml-8 text-center w-16">
-                                                        {((fraction * totalDuration) / 1000 / 60).toFixed(1)}m
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            
-                                            {/* Events with pause and scroll segments */}
-                                            {scrollEvents.map((event, idx) => {
-                                                const eventTime = event.timestamp - startTime;
-                                                const eventPosition = (eventTime / totalDuration) * 84 + 8;
-                                                
-                                                const pauseDur = event.pauseDuration || 0;
-                                                const scrollDur = event.scrollDuration || 0;
-                                                const totalDur = pauseDur + scrollDur;
-                                                
-                                                const pauseStartTime = eventTime - totalDur;
-                                                const scrollStartTime = eventTime - scrollDur;
-                                                
-                                                const pauseStartPos = Math.max(8, (pauseStartTime / totalDuration) * 84 + 8);
-                                                const scrollStartPos = Math.max(8, (scrollStartTime / totalDuration) * 84 + 8);
-                                                
-                                                const colorMap = {
-                                                    reading: '#10B981',
-                                                    scanning: '#FBBF24',
-                                                    scrolling: '#3B82F6',
-                                                    llm: '#8B5CF6'
-                                                };
-                                                const color = colorMap[event.classification] || '#6B7280';
+                                            {(() => {
+                                                // Fixed scale: 10 seconds = 100px
+                                                const pixelsPerSecond = 10;
+                                                const totalSeconds = totalDuration / 1000;
+                                                const timelineWidth = Math.max(800, totalSeconds * pixelsPerSecond);
+                                                const leftPadding = 50;
+                                                const rightPadding = 50;
+                                                const totalWidth = timelineWidth + leftPadding + rightPadding;
                                                 
                                                 return (
-                                                    <div key={`scroll-${idx}`}>
-                                                        {/* Pause segment (colored) */}
-                                                        {pauseDur > 0 && (
-                                                            <div
-                                                                className="absolute bottom-12 h-2 opacity-70 group"
-                                                                style={{
-                                                                    left: `${pauseStartPos}%`,
-                                                                    width: `${scrollStartPos - pauseStartPos}%`,
-                                                                    backgroundColor: color,
-                                                                    borderRadius: '2px'
-                                                                }}
-                                                            >
-                                                                <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-20">
-                                                                    <div><strong>{event.classification} - Pause</strong></div>
-                                                                    <div>{(pauseDur / 1000).toFixed(2)}s</div>
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                        
-                                                        {/* Scroll segment (gray) */}
-                                                        {scrollDur > 0 && (
-                                                            <div
-                                                                className="absolute bottom-12 h-2 bg-gray-400 opacity-50 group"
-                                                                style={{
-                                                                    left: `${scrollStartPos}%`,
-                                                                    width: `${eventPosition - scrollStartPos}%`,
-                                                                    borderRadius: '2px'
-                                                                }}
-                                                            >
-                                                                <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-20">
-                                                                    <div><strong>Scroll Motion</strong></div>
-                                                                    <div>{(scrollDur / 1000).toFixed(2)}s</div>
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                        
-                                                        {/* Event dot */}
-                                                        <div
-                                                            className="absolute bottom-12 group cursor-pointer"
+                                                    <div style={{width: `${totalWidth}px`, position: 'relative', minHeight: '200px'}}>
+                                                        {/* Base timeline */}
+                                                        <div 
+                                                            className="absolute bottom-12 h-2 bg-gray-300 rounded"
                                                             style={{
-                                                                left: `${eventPosition}%`,
-                                                                transform: 'translate(-50%, -50%)'
+                                                                left: `${leftPadding}px`,
+                                                                width: `${timelineWidth}px`
                                                             }}
-                                                        >
-                                                            <div 
-                                                                className="w-4 h-4 rounded-full border-2 border-white shadow-lg"
-                                                                style={{backgroundColor: color}}
-                                                            ></div>
-                                                            
-                                                            {/* Event number */}
-                                                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-gray-600">
-                                                                #{idx + 1}
-                                                            </div>
-                                                            
-                                                            {/* Detailed tooltip */}
-                                                            <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-8 px-4 py-3 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-30 shadow-xl">
-                                                                <div className="font-bold text-sm mb-2">Event #{idx + 1}</div>
-                                                                <div className="space-y-1">
-                                                                    <div><strong>Classification:</strong> {event.classification}</div>
-                                                                    <div><strong>Time:</strong> {new Date(event.timestamp).toLocaleTimeString()}</div>
-                                                                    <div><strong>Section:</strong> {event.sectionBeforeScroll || event.currentSection}</div>
-                                                                    <div><strong>Pause:</strong> {(pauseDur / 1000).toFixed(2)}s</div>
-                                                                    <div><strong>Scroll:</strong> {(scrollDur / 1000).toFixed(2)}s</div>
+                                                        ></div>
+                                                        
+                                                        {/* Time markers - every 30 seconds */}
+                                                        {Array.from({length: Math.ceil(totalSeconds / 30) + 1}, (_, i) => i * 30).map(seconds => {
+                                                            if (seconds > totalSeconds) return null;
+                                                            const xPos = leftPadding + (seconds / totalSeconds) * timelineWidth;
+                                                            return (
+                                                                <div key={seconds} className="absolute bottom-12" style={{left: `${xPos}px`}}>
+                                                                    <div className="w-px h-4 bg-gray-500 -mb-4"></div>
+                                                                    <div className="text-xs text-gray-600 mt-1 -ml-6 text-center w-12">
+                                                                        {seconds}s
+                                                                    </div>
                                                                 </div>
+                                                            );
+                                                        })}
+                                                        
+                                                        {/* Events with pause and scroll segments */}
+                                                        {scrollEvents.map((event, idx) => {
+                                                            const eventTime = event.timestamp - startTime;
+                                                            const eventSeconds = eventTime / 1000;
+                                                            const eventXPos = leftPadding + (eventSeconds / totalSeconds) * timelineWidth;
+                                                            
+                                                            const pauseDur = event.pauseDuration || 0;
+                                                            const scrollDur = event.scrollDuration || 0;
+                                                            
+                                                            const pauseSeconds = pauseDur / 1000;
+                                                            const scrollSeconds = scrollDur / 1000;
+                                                            
+                                                            const pauseStartSeconds = eventSeconds - pauseSeconds - scrollSeconds;
+                                                            const scrollStartSeconds = eventSeconds - scrollSeconds;
+                                                            
+                                                            const pauseStartX = Math.max(leftPadding, leftPadding + (pauseStartSeconds / totalSeconds) * timelineWidth);
+                                                            const scrollStartX = leftPadding + (scrollStartSeconds / totalSeconds) * timelineWidth;
+                                                            
+                                                            const pauseWidth = Math.max(2, (pauseSeconds / totalSeconds) * timelineWidth);
+                                                            const scrollWidth = Math.max(2, (scrollSeconds / totalSeconds) * timelineWidth);
+                                                            
+                                                            const colorMap = {
+                                                                reading: '#10B981',
+                                                                scanning: '#FBBF24',
+                                                                scrolling: '#3B82F6',
+                                                                llm: '#8B5CF6'
+                                                            };
+                                                            const color = colorMap[event.classification] || '#6B7280';
+                                                            
+                                                            return (
+                                                                <div key={`scroll-${idx}`}>
+                                                                    {/* Pause segment */}
+                                                                    {pauseDur > 0 && (
+                                                                        <div
+                                                                            className="absolute bottom-12 h-2 opacity-70 group"
+                                                                            style={{
+                                                                                left: `${pauseStartX}px`,
+                                                                                width: `${pauseWidth}px`,
+                                                                                backgroundColor: color,
+                                                                                borderRadius: '2px'
+                                                                            }}
+                                                                        >
+                                                                            <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-20">
+                                                                                <div><strong>{event.classification} - Pause</strong></div>
+                                                                                <div>{(pauseDur / 1000).toFixed(2)}s</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                    
+                                                                    {/* Scroll segment */}
+                                                                    {scrollDur > 0 && (
+                                                                        <div
+                                                                            className="absolute bottom-12 h-2 bg-gray-400 opacity-50 group"
+                                                                            style={{
+                                                                                left: `${scrollStartX}px`,
+                                                                                width: `${scrollWidth}px`,
+                                                                                borderRadius: '2px'
+                                                                            }}
+                                                                        >
+                                                                            <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-20">
+                                                                                <div><strong>Scroll Motion</strong></div>
+                                                                                <div>{(scrollDur / 1000).toFixed(2)}s</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                    
+                                                                    {/* Event dot */}
+                                                                    <div
+                                                                        className="absolute bottom-12 group cursor-pointer"
+                                                                        style={{
+                                                                            left: `${eventXPos}px`,
+                                                                            transform: 'translate(-50%, -50%)'
+                                                                        }}
+                                                                    >
+                                                                        <div 
+                                                                            className="w-4 h-4 rounded-full border-2 border-white shadow-lg"
+                                                                            style={{backgroundColor: color}}
+                                                                        ></div>
+                                                                        
+                                                                        {/* Event number */}
+                                                                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-gray-600">
+                                                                            #{idx + 1}
+                                                                        </div>
+                                                                        
+                                                                        {/* Tooltip */}
+                                                                        <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-8 px-4 py-3 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-30 shadow-xl">
+                                                                            <div className="font-bold text-sm mb-2">Event #{idx + 1}</div>
+                                                                            <div className="space-y-1">
+                                                                                <div><strong>Classification:</strong> {event.classification}</div>
+                                                                                <div><strong>Time:</strong> {new Date(event.timestamp).toLocaleTimeString()}</div>
+                                                                                <div><strong>Section:</strong> {event.sectionBeforeScroll || event.currentSection}</div>
+                                                                                <div><strong>Pause:</strong> {(pauseDur / 1000).toFixed(2)}s</div>
+                                                                                <div><strong>Scroll:</strong> {(scrollDur / 1000).toFixed(2)}s</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                        
+                                                        {/* LLM segments */}
+                                                        {allEvents
+                                                            .filter(e => e.eventType === 'tab_switch' && e.classification === 'llm')
+                                                            .map((event, idx) => {
+                                                                const eventTime = event.timestamp - startTime;
+                                                                const eventSeconds = eventTime / 1000;
+                                                                const llmDuration = event.llmDuration || event.timeOnPreviousTab || 0;
+                                                                const llmSeconds = llmDuration / 1000;
+                                                                
+                                                                const llmStartSeconds = eventSeconds - llmSeconds;
+                                                                const llmStartX = leftPadding + (llmStartSeconds / totalSeconds) * timelineWidth;
+                                                                const llmEndX = leftPadding + (eventSeconds / totalSeconds) * timelineWidth;
+                                                                const llmWidth = Math.max(2, (llmSeconds / totalSeconds) * timelineWidth);
+                                                                
+                                                                return (
+                                                                    <div key={`llm-${idx}`}>
+                                                                        {/* LLM segment */}
+                                                                        <div
+                                                                            className="absolute bottom-12 h-2 opacity-80 group"
+                                                                            style={{
+                                                                                left: `${llmStartX}px`,
+                                                                                width: `${llmWidth}px`,
+                                                                                backgroundColor: '#8B5CF6',
+                                                                                borderRadius: '2px'
+                                                                            }}
+                                                                        >
+                                                                            <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-20">
+                                                                                <div><strong>🤖 LLM Usage</strong></div>
+                                                                                <div>{(llmDuration / 1000).toFixed(2)}s</div>
+                                                                            </div>
+                                                                        </div>
+                                                                        
+                                                                        {/* LLM marker */}
+                                                                        <div
+                                                                            className="absolute bottom-12 group cursor-pointer"
+                                                                            style={{
+                                                                                left: `${llmEndX}px`,
+                                                                                transform: 'translate(-50%, -50%)'
+                                                                            }}
+                                                                        >
+                                                                            <div 
+                                                                                className="w-4 h-4 rounded-full border-2 border-white shadow-lg"
+                                                                                style={{backgroundColor: '#8B5CF6'}}
+                                                                            ></div>
+                                                                            
+                                                                            {/* Tooltip */}
+                                                                            <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-8 px-4 py-3 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-30 shadow-xl">
+                                                                                <div className="font-bold text-sm mb-2">🤖 LLM Usage</div>
+                                                                                <div className="space-y-1">
+                                                                                    <div><strong>Duration:</strong> {(llmDuration / 1000).toFixed(2)}s</div>
+                                                                                    <div><strong>Time:</strong> {new Date(event.timestamp).toLocaleTimeString()}</div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })
+                                                        }
+                                                        
+                                                        {/* Legend */}
+                                                        <div className="absolute top-4 right-4 space-y-1 text-xs bg-white p-2 rounded border shadow-sm">
+                                                            <div className="flex items-center">
+                                                                <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
+                                                                <span>Reading</span>
+                                                            </div>
+                                                            <div className="flex items-center">
+                                                                <div className="w-3 h-3 bg-yellow-500 rounded mr-2"></div>
+                                                                <span>Scanning</span>
+                                                            </div>
+                                                            <div className="flex items-center">
+                                                                <div className="w-3 h-3 bg-blue-500 rounded mr-2"></div>
+                                                                <span>Scrolling</span>
+                                                            </div>
+                                                            <div className="flex items-center">
+                                                                <div className="w-3 h-3 bg-purple-500 rounded mr-2"></div>
+                                                                <span>🤖 LLM</span>
+                                                            </div>
+                                                            <div className="flex items-center pt-1 border-t">
+                                                                <div className="w-3 h-3 bg-gray-400 rounded mr-2"></div>
+                                                                <span>Scroll Motion</span>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 );
-                                            })}
-                                            
-                                            {/* LLM segments (tab_switch events with classification='llm') */}
-                                            {allEvents
-                                                .filter(e => e.eventType === 'tab_switch' && e.classification === 'llm')
-                                                .map((event, idx) => {
-                                                    const eventTime = event.timestamp - startTime;
-                                                    const llmDuration = event.llmDuration || event.timeOnPreviousTab || 0;
-                                                    
-                                                    const llmStartTime = eventTime - llmDuration;
-                                                    const llmEndTime = eventTime;
-                                                    
-                                                    const llmStartPos = Math.max(8, (llmStartTime / totalDuration) * 84 + 8);
-                                                    const llmEndPos = Math.min(92, (llmEndTime / totalDuration) * 84 + 8);
-                                                    
-                                                    return (
-                                                        <div key={`llm-${idx}`}>
-                                                            {/* LLM segment (purple) */}
-                                                            <div
-                                                                className="absolute bottom-12 h-2 opacity-80 group"
-                                                                style={{
-                                                                    left: `${llmStartPos}%`,
-                                                                    width: `${llmEndPos - llmStartPos}%`,
-                                                                    backgroundColor: '#8B5CF6',
-                                                                    borderRadius: '2px'
-                                                                }}
-                                                            >
-                                                                <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-20">
-                                                                    <div><strong>🤖 LLM Usage</strong></div>
-                                                                    <div>{(llmDuration / 1000).toFixed(2)}s</div>
-                                                                </div>
-                                                            </div>
-                                                            
-                                                            {/* LLM marker */}
-                                                            <div
-                                                                className="absolute bottom-12 group cursor-pointer"
-                                                                style={{
-                                                                    left: `${llmEndPos}%`,
-                                                                    transform: 'translate(-50%, -50%)'
-                                                                }}
-                                                            >
-                                                                <div 
-                                                                    className="w-4 h-4 rounded-full border-2 border-white shadow-lg"
-                                                                    style={{backgroundColor: '#8B5CF6'}}
-                                                                ></div>
-                                                                
-                                                                {/* Tooltip */}
-                                                                <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-8 px-4 py-3 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-30 shadow-xl">
-                                                                    <div className="font-bold text-sm mb-2">🤖 LLM Usage</div>
-                                                                    <div className="space-y-1">
-                                                                        <div><strong>Duration:</strong> {(llmDuration / 1000).toFixed(2)}s</div>
-                                                                        <div><strong>Time:</strong> {new Date(event.timestamp).toLocaleTimeString()}</div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })
-                                            }
-                                            
-                                            {/* Legend */}
-                                            <div className="absolute top-4 right-4 space-y-1 text-xs bg-white p-2 rounded border">
-                                                <div className="flex items-center">
-                                                    <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
-                                                    <span>Reading</span>
-                                                </div>
-                                                <div className="flex items-center">
-                                                    <div className="w-3 h-3 bg-yellow-500 rounded mr-2"></div>
-                                                    <span>Scanning</span>
-                                                </div>
-                                                <div className="flex items-center">
-                                                    <div className="w-3 h-3 bg-blue-500 rounded mr-2"></div>
-                                                    <span>Scrolling</span>
-                                                </div>
-                                                <div className="flex items-center">
-                                                    <div className="w-3 h-3 bg-purple-500 rounded mr-2"></div>
-                                                    <span>🤖 LLM</span>
-                                                </div>
-                                                <div className="flex items-center pt-1 border-t">
-                                                    <div className="w-3 h-3 bg-gray-400 rounded mr-2"></div>
-                                                    <span>Scroll Motion</span>
-                                                </div>
-                                            </div>
+                                            })()}
                                         </div>
                                     </div>
                                 ) : (
                                     <p className="text-gray-500">No scroll events recorded</p>
                                 )}
+                            </div>
                             </div>
 
                             {/* Event Log */}
