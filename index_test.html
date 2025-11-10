@@ -172,6 +172,11 @@
             const scrollStartTimeRef = useRef(null); // Track when scroll starts
             const isScrollingRef = useRef(false); // Track if currently scrolling
             const sectionBeforeScrollRef = useRef('Introduction'); // 스크롤 시작 전 섹션
+            
+            // LLM typing tracking
+            const isTypingRef = useRef(false); // 현재 타이핑 중인지
+            const typingTimeoutRef = useRef(null); // 타이핑 멈춤 감지용
+            const lastTypingActivityRef = useRef(Date.now()); // 마지막 타이핑 활동 시간
 
             // Papers
             const papers = [
@@ -295,6 +300,29 @@
                 
                 const now = Date.now();
                 
+                // === LLM 탭에서 나갈 때: 마지막 타이핑 구간 저장 ===
+                if (activeTab === 'ai') {
+                    const activityDuration = now - lastTypingActivityRef.current;
+                    const classification = isTypingRef.current ? 'typing' : 'none-typing';
+                    
+                    // Clear typing timeout
+                    if (typingTimeoutRef.current) {
+                        clearTimeout(typingTimeoutRef.current);
+                        typingTimeoutRef.current = null;
+                    }
+                    
+                    logEvent('llm_activity', {
+                        classification: classification,
+                        duration: activityDuration,
+                        isTabSwitch: true
+                    });
+                    
+                    console.log(`⌨️  [${classification.toUpperCase()}] duration: ${activityDuration}ms before leaving AI tab`);
+                    
+                    // Reset typing state
+                    isTypingRef.current = false;
+                }
+                
                 // LLM 탭으로 전환: reading 타이머 중단 및 현재 구간 저장
                 if (newTab === 'ai' && activeTab === 'reading') {
                     const pauseDuration = now - lastActivityTimeRef.current;
@@ -320,6 +348,10 @@
                     });
                     
                     console.log(`🔄 [TAB → AI] Saved ${classification}: ${pauseDuration}ms at "${currentSection}"`);
+                    
+                    // LLM 탭으로 들어갈 때 타이핑 타이머 초기화
+                    lastTypingActivityRef.current = now;
+                    isTypingRef.current = false;
                 }
                 
                 // Reading 탭으로 복귀: 타이머 재시작
@@ -370,6 +402,53 @@
                         }
                     }, 100);
                 }
+            };
+            
+            // Handle typing in LLM tab
+            const handleTyping = () => {
+                if (activeTab !== 'ai') return; // Only track in AI tab
+                
+                const now = Date.now();
+                
+                // 타이핑 시작
+                if (!isTypingRef.current) {
+                    // 이전 none-typing 구간 저장
+                    const noneTypingDuration = now - lastTypingActivityRef.current;
+                    
+                    if (noneTypingDuration > 100) { // 최소 100ms 이상
+                        logEvent('llm_activity', {
+                            classification: 'none-typing',
+                            duration: noneTypingDuration
+                        });
+                        
+                        console.log(`⌨️  [NONE-TYPING] duration: ${noneTypingDuration}ms`);
+                    }
+                    
+                    isTypingRef.current = true;
+                    lastTypingActivityRef.current = now;
+                }
+                
+                // Clear existing timeout
+                if (typingTimeoutRef.current) {
+                    clearTimeout(typingTimeoutRef.current);
+                }
+                
+                // 타이핑 멈춤 감지 (2초 동안 타이핑 없으면 멈춘 것으로 간주)
+                typingTimeoutRef.current = setTimeout(() => {
+                    const stopTime = Date.now();
+                    const typingDuration = stopTime - lastTypingActivityRef.current;
+                    
+                    logEvent('llm_activity', {
+                        classification: 'typing',
+                        duration: typingDuration
+                    });
+                    
+                    console.log(`⌨️  [TYPING] duration: ${typingDuration}ms`);
+                    
+                    // 타이핑 멈춤
+                    isTypingRef.current = false;
+                    lastTypingActivityRef.current = stopTime;
+                }, 2000);
             };
 
             // Handle scroll - track reading behavior
@@ -1294,6 +1373,7 @@
                                                         type="text"
                                                         value={inputMessage}
                                                         onChange={(e) => setInputMessage(e.target.value)}
+                                                        onKeyDown={handleTyping}
                                                         placeholder="Message ChatGPT"
                                                         className="flex-1 px-4 py-3 bg-transparent focus:outline-none text-gray-900 placeholder-gray-500"
                                                         disabled={isLoading}
