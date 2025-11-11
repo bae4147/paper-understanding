@@ -17,7 +17,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState } = React;
+        const { useState, useEffect } = React;
 
         // Initialize Firebase
         const firebaseConfig = {
@@ -37,41 +37,73 @@
             const [condition, setCondition] = useState('without_llm');
             const [currentPaper, setCurrentPaper] = useState('');
             
-            // Demographics
-            const [age, setAge] = useState('');
+            // Get PID from URL if available
+            useEffect(() => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlPid = urlParams.get('participantId');
+                if (urlPid) {
+                    setParticipantId(urlPid);
+                }
+            }, []);
+            
+            // Section 3: Demographics
             const [gender, setGender] = useState('');
+            const [age, setAge] = useState('');
             const [education, setEducation] = useState('');
-            const [fieldOfStudy, setFieldOfStudy] = useState('');
             
-            // Research Experience
-            const [researchYears, setResearchYears] = useState('');
-            const [papersRead, setPapersRead] = useState('');
-            const [papersPublished, setPapersPublished] = useState('');
-            const [peerReviewExp, setPeerReviewExp] = useState('');
+            // Section 2: Research Experience
+            const [major, setMajor] = useState('');
+            const [semester, setSemester] = useState('');
+            const [hasSubmission, setHasSubmission] = useState('');
             
-            // LLM Experience
-            const [llmFamiliarity, setLlmFamiliarity] = useState('3');
-            const [llmUsageFreq, setLlmUsageFreq] = useState('');
-            const [llmUsedFor, setLlmUsedFor] = useState([]);
-            const [otherLlmUse, setOtherLlmUse] = useState('');
+            // Section 1: LLM Usage
+            const [llmFrequency, setLlmFrequency] = useState('');
+            const [llmPurpose, setLlmPurpose] = useState([]);
+            const [llmPurposeOther, setLlmPurposeOther] = useState('');
+            const [llmTrust, setLlmTrust] = useState('3');
+            const [llmUsefulness, setLlmUsefulness] = useState('3');
+            
+            // Section 4: Topic Relevance
+            const topics = [
+                'Accessibility and Aging',
+                'Computational Interaction',
+                'Human-AI Collaboration',
+                'Education and Learning Technologies',
+                'Health & Wellbeing',
+                'Social Computing / Online Communities',
+                'Design / Creativity Support Tools',
+                'Privacy and Security'
+            ];
+            
+            const [topicFamiliarity, setTopicFamiliarity] = useState(
+                Object.fromEntries(topics.map(t => [t, '3']))
+            );
 
             const papers = [
                 { id: 'chi2025-lbw-01', name: '"A Great Start, But...": Evaluating LLM-Generated Mind Maps for Information Mapping' }
             ];
 
-            const handleLlmUseToggle = (use) => {
-                setLlmUsedFor(prev => 
-                    prev.includes(use) 
-                        ? prev.filter(u => u !== use)
-                        : [...prev, use]
+            const handleLlmPurposeToggle = (purpose) => {
+                setLlmPurpose(prev => 
+                    prev.includes(purpose) 
+                        ? prev.filter(p => p !== purpose)
+                        : [...prev, purpose]
                 );
+            };
+            
+            const handleTopicChange = (topic, value) => {
+                setTopicFamiliarity(prev => ({
+                    ...prev,
+                    [topic]: value
+                }));
             };
 
             const handleSubmit = async (e) => {
                 e.preventDefault();
                 
                 // Validation
-                if (!participantId || !currentPaper || !age || !gender || !education) {
+                if (!participantId || !currentPaper || !gender || !age || !education || 
+                    !major || !semester || !hasSubmission || !llmFrequency) {
                     alert('Please fill in all required fields (*)');
                     return;
                 }
@@ -81,23 +113,23 @@
                     condition,
                     paper: currentPaper,
                     demographics: {
-                        age: parseInt(age),
                         gender,
-                        education,
-                        fieldOfStudy
+                        age: parseInt(age),
+                        education
                     },
                     researchExperience: {
-                        yearsOfResearch: parseFloat(researchYears) || 0,
-                        papersReadPerYear: parseInt(papersRead) || 0,
-                        papersPublished: parseInt(papersPublished) || 0,
-                        peerReviewExperience: peerReviewExp
+                        major,
+                        semester,
+                        hasSubmissionExperience: hasSubmission === 'yes'
                     },
-                    llmExperience: {
-                        familiarity: parseInt(llmFamiliarity),
-                        usageFrequency: llmUsageFreq,
-                        usedFor: llmUsedFor,
-                        otherUse: otherLlmUse
+                    llmUsage: {
+                        frequency: llmFrequency,
+                        purpose: llmPurpose,
+                        purposeOther: llmPurposeOther,
+                        trust: parseInt(llmTrust),
+                        usefulness: parseInt(llmUsefulness)
                     },
+                    topicFamiliarity: topicFamiliarity,
                     surveyCompletedAt: new Date().toISOString()
                 };
 
@@ -114,7 +146,7 @@
 
                     console.log('✅ Pre-survey saved');
 
-                    // Navigate to experiment with URL params
+                    // Navigate to experiment
                     const params = new URLSearchParams({
                         participantId,
                         condition,
@@ -134,7 +166,7 @@
                             {/* Header */}
                             <div className="text-center mb-8">
                                 <h1 className="text-3xl font-bold text-gray-800 mb-2">Pre-Task Survey</h1>
-                                <p className="text-gray-600">Please answer the following questions before starting the experiment</p>
+                                <p className="text-gray-600">사전 설문지</p>
                             </div>
 
                             <form onSubmit={handleSubmit} className="space-y-8">
@@ -193,24 +225,183 @@
                                     </div>
                                 </div>
 
-                                {/* Demographics */}
+                                {/* Section 1: LLM Usage */}
                                 <div className="border-b pb-6">
-                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Demographics</h2>
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Section 1. LLM Usage</h2>
+                                    
+                                    <div className="space-y-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Q1. LLM을 학업용 또는 연구용으로 얼마나 자주 사용하시나요? *
+                                            </label>
+                                            <select
+                                                value={llmFrequency}
+                                                onChange={(e) => setLlmFrequency(e.target.value)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                required
+                                            >
+                                                <option value="">Select...</option>
+                                                <option value="rarely">거의 사용하지 않는다 (거의 매일 0회)</option>
+                                                <option value="1-2-per-week">일주일에 1~2회 정도</option>
+                                                <option value="3-5-per-week">일주일에 3~5회 정도</option>
+                                                <option value="daily">거의 매일 사용한다 (하루 1회 이상)</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Q2. 주로 어떤 목적으로 LLM을 사용하시나요? (복수 선택 가능)
+                                            </label>
+                                            <div className="space-y-2">
+                                                {['요약(summarization)', '번역(translation)', '코딩 도움(code debugging, generation)', 
+                                                  '아이디어 생성(ideation, brainstorming)', '논문 읽기 / 정리 (paper reading / note-taking)', 
+                                                  '글쓰기 지원(writing assistance)'].map(purpose => (
+                                                    <label key={purpose} className="flex items-center space-x-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={llmPurpose.includes(purpose)}
+                                                            onChange={() => handleLlmPurposeToggle(purpose)}
+                                                            className="w-4 h-4"
+                                                        />
+                                                        <span className="text-sm text-gray-700">{purpose}</span>
+                                                    </label>
+                                                ))}
+                                                <div className="flex items-center space-x-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={llmPurpose.includes('기타')}
+                                                        onChange={() => handleLlmPurposeToggle('기타')}
+                                                        className="w-4 h-4"
+                                                    />
+                                                    <span className="text-sm text-gray-700">기타:</span>
+                                                    <input
+                                                        type="text"
+                                                        value={llmPurposeOther}
+                                                        onChange={(e) => setLlmPurposeOther(e.target.value)}
+                                                        className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                                                        placeholder="직접 입력"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-3">
+                                                Q3. LLM의 답변을 신뢰하십니까?
+                                            </label>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs text-gray-500">전혀 신뢰하지<br/>않는다</span>
+                                                <div className="flex space-x-2">
+                                                    {[1, 2, 3, 4, 5].map(value => (
+                                                        <button
+                                                            key={value}
+                                                            type="button"
+                                                            onClick={() => setLlmTrust(value.toString())}
+                                                            className={`w-12 h-12 rounded-full font-bold transition-colors ${
+                                                                llmTrust === value.toString()
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                            }`}
+                                                        >
+                                                            {value}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <span className="text-xs text-gray-500">매우<br/>신뢰한다</span>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-3">
+                                                Q4. LLM이 학습이나 연구에 도움이 된다고 생각하십니까?
+                                            </label>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs text-gray-500">전혀 도움이<br/>되지 않는다</span>
+                                                <div className="flex space-x-2">
+                                                    {[1, 2, 3, 4, 5].map(value => (
+                                                        <button
+                                                            key={value}
+                                                            type="button"
+                                                            onClick={() => setLlmUsefulness(value.toString())}
+                                                            className={`w-12 h-12 rounded-full font-bold transition-colors ${
+                                                                llmUsefulness === value.toString()
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                            }`}
+                                                        >
+                                                            {value}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <span className="text-xs text-gray-500">매우 도움이<br/>된다</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Section 2: Research Experience */}
+                                <div className="border-b pb-6">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Section 2. Research Experience</h2>
                                     
                                     <div className="space-y-4">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Age *</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Q5. 현재 소속된 전공은 무엇입니까? *
+                                            </label>
                                             <input
-                                                type="number"
-                                                value={age}
-                                                onChange={(e) => setAge(e.target.value)}
+                                                type="text"
+                                                value={major}
+                                                onChange={(e) => setMajor(e.target.value)}
                                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                placeholder="예: 컴퓨터공학과, 데이터과학과"
                                                 required
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Gender *</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Q6. 현재 몇 학기째 재학 중입니까? *
+                                            </label>
+                                            <select
+                                                value={semester}
+                                                onChange={(e) => setSemester(e.target.value)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                required
+                                            >
+                                                <option value="">Select...</option>
+                                                <option value="1">1학기차</option>
+                                                <option value="2">2학기차</option>
+                                                <option value="3+">3학기차 이상</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Q7. 학회나 저널에 논문을 제출한 경험이 있습니까? *
+                                            </label>
+                                            <select
+                                                value={hasSubmission}
+                                                onChange={(e) => setHasSubmission(e.target.value)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                required
+                                            >
+                                                <option value="">Select...</option>
+                                                <option value="yes">예 (있음)</option>
+                                                <option value="no">아니오 (없음)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Section 3: Demographics */}
+                                <div className="border-b pb-6">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Section 3. Demographics</h2>
+                                    
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Q8. 성별을 선택해 주세요. *
+                                            </label>
                                             <select
                                                 value={gender}
                                                 onChange={(e) => setGender(e.target.value)}
@@ -218,15 +409,30 @@
                                                 required
                                             >
                                                 <option value="">Select...</option>
-                                                <option value="male">Male</option>
-                                                <option value="female">Female</option>
-                                                <option value="non-binary">Non-binary</option>
-                                                <option value="prefer-not-to-say">Prefer not to say</option>
+                                                <option value="male">남성</option>
+                                                <option value="female">여성</option>
+                                                <option value="other">기타 / 응답하지 않음</option>
                                             </select>
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Education Level *</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Q9. 나이를 입력해 주세요. *
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={age}
+                                                onChange={(e) => setAge(e.target.value)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                placeholder="예: 25"
+                                                required
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Q10. 현재 교육 수준을 선택해 주세요. *
+                                            </label>
                                             <select
                                                 value={education}
                                                 onChange={(e) => setEducation(e.target.value)}
@@ -234,170 +440,47 @@
                                                 required
                                             >
                                                 <option value="">Select...</option>
-                                                <option value="bachelor">Bachelor's Degree</option>
-                                                <option value="master">Master's Degree</option>
-                                                <option value="phd">PhD or Doctorate</option>
-                                                <option value="other">Other</option>
-                                            </select>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Field of Study</label>
-                                            <input
-                                                type="text"
-                                                value={fieldOfStudy}
-                                                onChange={(e) => setFieldOfStudy(e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                placeholder="e.g., Computer Science"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Research Experience */}
-                                <div className="border-b pb-6">
-                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Research Experience</h2>
-                                    
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Years of Research Experience
-                                            </label>
-                                            <input
-                                                type="number"
-                                                step="0.5"
-                                                value={researchYears}
-                                                onChange={(e) => setResearchYears(e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                placeholder="e.g., 2.5"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Academic Papers Read Per Year (approximately)
-                                            </label>
-                                            <input
-                                                type="number"
-                                                value={papersRead}
-                                                onChange={(e) => setPapersRead(e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                placeholder="e.g., 50"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Academic Papers Published
-                                            </label>
-                                            <input
-                                                type="number"
-                                                value={papersPublished}
-                                                onChange={(e) => setPapersPublished(e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                placeholder="e.g., 3"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Peer Review Experience
-                                            </label>
-                                            <select
-                                                value={peerReviewExp}
-                                                onChange={(e) => setPeerReviewExp(e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                            >
-                                                <option value="">Select...</option>
-                                                <option value="none">None</option>
-                                                <option value="1-5">1-5 papers</option>
-                                                <option value="6-10">6-10 papers</option>
-                                                <option value="11+">11+ papers</option>
+                                                <option value="master-enrolled">석사 재학 중</option>
+                                                <option value="master-graduated">석사 졸업</option>
+                                                <option value="phd-enrolled">박사 재학 중</option>
                                             </select>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* LLM Experience */}
+                                {/* Section 4: Topic Relevance */}
                                 <div className="pb-6">
-                                    <h2 className="text-xl font-bold text-gray-800 mb-4">LLM Experience</h2>
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Section 4. Topic Relevance</h2>
+                                    <p className="text-sm text-gray-600 mb-4">
+                                        아래는 이번 연구에서 사용할 논문 주제 영역입니다.<br/>
+                                        각 주제에 대해 "얼마나 연구 분야와 관련이 있는가?"를 5점 척도로 평가해주세요.<br/>
+                                        (1 = 전혀 모름 / 5 = 매우 잘 알고 있음)
+                                    </p>
                                     
                                     <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                How familiar are you with LLMs (ChatGPT, Claude, etc.)?
-                                            </label>
-                                            <div className="flex items-center space-x-4">
-                                                {[1, 2, 3, 4, 5].map(value => (
-                                                    <button
-                                                        key={value}
-                                                        type="button"
-                                                        onClick={() => setLlmFamiliarity(value.toString())}
-                                                        className={`w-12 h-12 rounded-full font-bold transition-colors ${
-                                                            llmFamiliarity === value.toString()
-                                                                ? 'bg-blue-600 text-white'
-                                                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                                        }`}
-                                                    >
-                                                        {value}
-                                                    </button>
-                                                ))}
+                                        {topics.map(topic => (
+                                            <div key={topic} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                                <span className="text-sm font-medium text-gray-700 flex-1">
+                                                    {topic}
+                                                </span>
+                                                <div className="flex space-x-1">
+                                                    {[1, 2, 3, 4, 5].map(value => (
+                                                        <button
+                                                            key={value}
+                                                            type="button"
+                                                            onClick={() => handleTopicChange(topic, value.toString())}
+                                                            className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                topicFamiliarity[topic] === value.toString()
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                            }`}
+                                                        >
+                                                            {value}
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-2">1 = Not familiar at all, 5 = Very familiar</p>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                How often do you use LLMs?
-                                            </label>
-                                            <select
-                                                value={llmUsageFreq}
-                                                onChange={(e) => setLlmUsageFreq(e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                            >
-                                                <option value="">Select...</option>
-                                                <option value="never">Never</option>
-                                                <option value="rarely">Rarely (once a month or less)</option>
-                                                <option value="sometimes">Sometimes (2-3 times per month)</option>
-                                                <option value="often">Often (once a week)</option>
-                                                <option value="very-often">Very often (daily)</option>
-                                            </select>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                What do you typically use LLMs for? (Select all that apply)
-                                            </label>
-                                            <div className="space-y-2">
-                                                {['Writing assistance', 'Code generation', 'Research assistance', 'Summarization', 'Translation', 'Learning new topics', 'Creative work'].map(use => (
-                                                    <label key={use} className="flex items-center space-x-2">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={llmUsedFor.includes(use)}
-                                                            onChange={() => handleLlmUseToggle(use)}
-                                                            className="w-4 h-4"
-                                                        />
-                                                        <span className="text-sm text-gray-700">{use}</span>
-                                                    </label>
-                                                ))}
-                                                <label className="flex items-center space-x-2">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={llmUsedFor.includes('Other')}
-                                                        onChange={() => handleLlmUseToggle('Other')}
-                                                        className="w-4 h-4"
-                                                    />
-                                                    <span className="text-sm text-gray-700">Other:</span>
-                                                    <input
-                                                        type="text"
-                                                        value={otherLlmUse}
-                                                        onChange={(e) => setOtherLlmUse(e.target.value)}
-                                                        className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
-                                                        placeholder="Please specify"
-                                                    />
-                                                </label>
-                                            </div>
-                                        </div>
+                                        ))}
                                     </div>
                                 </div>
 
