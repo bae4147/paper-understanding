@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pre-Task Survey</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDPd-Fz-PdUwc9uvXAg_xEVR5FyPWCg_zA",
+            authDomain: "paper-understanding.firebaseapp.com",
+            projectId: "paper-understanding",
+            storageBucket: "paper-understanding.firebasestorage.app",
+            messagingSenderId: "702665730649",
+            appId: "1:702665730649:web:9858bde469085a240fdf48"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        function PreSurvey() {
+            const [participantId, setParticipantId] = useState('');
+            const [condition, setCondition] = useState('without_llm');
+            const [currentPaper, setCurrentPaper] = useState('');
+            
+            // Demographics
+            const [age, setAge] = useState('');
+            const [gender, setGender] = useState('');
+            const [education, setEducation] = useState('');
+            const [fieldOfStudy, setFieldOfStudy] = useState('');
+            
+            // Research Experience
+            const [researchYears, setResearchYears] = useState('');
+            const [papersRead, setPapersRead] = useState('');
+            const [papersPublished, setPapersPublished] = useState('');
+            const [peerReviewExp, setPeerReviewExp] = useState('');
+            
+            // LLM Experience
+            const [llmFamiliarity, setLlmFamiliarity] = useState('3');
+            const [llmUsageFreq, setLlmUsageFreq] = useState('');
+            const [llmUsedFor, setLlmUsedFor] = useState([]);
+            const [otherLlmUse, setOtherLlmUse] = useState('');
+
+            const papers = [
+                { id: 'chi2025-lbw-01', name: '"A Great Start, But...": Evaluating LLM-Generated Mind Maps for Information Mapping' }
+            ];
+
+            const handleLlmUseToggle = (use) => {
+                setLlmUsedFor(prev => 
+                    prev.includes(use) 
+                        ? prev.filter(u => u !== use)
+                        : [...prev, use]
+                );
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                
+                // Validation
+                if (!participantId || !currentPaper || !age || !gender || !education) {
+                    alert('Please fill in all required fields (*)');
+                    return;
+                }
+
+                const surveyData = {
+                    participantId,
+                    condition,
+                    paper: currentPaper,
+                    demographics: {
+                        age: parseInt(age),
+                        gender,
+                        education,
+                        fieldOfStudy
+                    },
+                    researchExperience: {
+                        yearsOfResearch: parseFloat(researchYears) || 0,
+                        papersReadPerYear: parseInt(papersRead) || 0,
+                        papersPublished: parseInt(papersPublished) || 0,
+                        peerReviewExperience: peerReviewExp
+                    },
+                    llmExperience: {
+                        familiarity: parseInt(llmFamiliarity),
+                        usageFrequency: llmUsageFreq,
+                        usedFor: llmUsedFor,
+                        otherUse: otherLlmUse
+                    },
+                    surveyCompletedAt: new Date().toISOString()
+                };
+
+                try {
+                    // Save to Firebase
+                    const docRef = db.collection('users').doc(participantId);
+                    await docRef.set({
+                        participantId,
+                        condition,
+                        paper: currentPaper,
+                        preSurvey: surveyData,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    console.log('✅ Pre-survey saved');
+
+                    // Navigate to experiment with URL params
+                    const params = new URLSearchParams({
+                        participantId,
+                        condition,
+                        paper: currentPaper
+                    });
+                    window.location.href = `index.html?${params.toString()}`;
+                } catch (error) {
+                    console.error('Error saving survey:', error);
+                    alert('Failed to save survey. Please try again.');
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
+                    <div className="max-w-3xl mx-auto">
+                        <div className="bg-white rounded-xl shadow-2xl p-8">
+                            {/* Header */}
+                            <div className="text-center mb-8">
+                                <h1 className="text-3xl font-bold text-gray-800 mb-2">Pre-Task Survey</h1>
+                                <p className="text-gray-600">Please answer the following questions before starting the experiment</p>
+                            </div>
+
+                            <form onSubmit={handleSubmit} className="space-y-8">
+                                {/* Experiment Setup */}
+                                <div className="border-b pb-6">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Experiment Information</h2>
+                                    
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Participant ID *
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={participantId}
+                                                onChange={(e) => setParticipantId(e.target.value)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                placeholder="e.g., P001"
+                                                required
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Condition *
+                                            </label>
+                                            <select
+                                                value={condition}
+                                                onChange={(e) => setCondition(e.target.value)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                required
+                                            >
+                                                <option value="without_llm">Without LLM (Control)</option>
+                                                <option value="with_llm">With LLM (Experimental)</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Select Paper *
+                                            </label>
+                                            <select
+                                                value={currentPaper}
+                                                onChange={(e) => setCurrentPaper(e.target.value)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                required
+                                            >
+                                                <option value="">Choose a paper...</option>
+                                                {papers.map(paper => (
+                                                    <option key={paper.id} value={paper.id}>
+                                                        {paper.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Demographics */}
+                                <div className="border-b pb-6">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Demographics</h2>
+                                    
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Age *</label>
+                                            <input
+                                                type="number"
+                                                value={age}
+                                                onChange={(e) => setAge(e.target.value)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                required
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Gender *</label>
+                                            <select
+                                                value={gender}
+                                                onChange={(e) => setGender(e.target.value)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                required
+                                            >
+                                                <option value="">Select...</option>
+                                                <option value="male">Male</option>
+                                                <option value="female">Female</option>
+                                                <option value="non-binary">Non-binary</option>
+                                                <option value="prefer-not-to-say">Prefer not to say</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Education Level *</label>
+                                            <select
+                                                value={education}
+                                                onChange={(e) => setEducation(e.target.value)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                required
+                                            >
+                                                <option value="">Select...</option>
+                                                <option value="bachelor">Bachelor's Degree</option>
+                                                <option value="master">Master's Degree</option>
+                                                <option value="phd">PhD or Doctorate</option>
+                                                <option value="other">Other</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Field of Study</label>
+                                            <input
+                                                type="text"
+                                                value={fieldOfStudy}
+                                                onChange={(e) => setFieldOfStudy(e.target.value)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                placeholder="e.g., Computer Science"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Research Experience */}
+                                <div className="border-b pb-6">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Research Experience</h2>
+                                    
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Years of Research Experience
+                                            </label>
+                                            <input
+                                                type="number"
+                                                step="0.5"
+                                                value={researchYears}
+                                                onChange={(e) => setResearchYears(e.target.value)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                placeholder="e.g., 2.5"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Academic Papers Read Per Year (approximately)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={papersRead}
+                                                onChange={(e) => setPapersRead(e.target.value)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                placeholder="e.g., 50"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Academic Papers Published
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={papersPublished}
+                                                onChange={(e) => setPapersPublished(e.target.value)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                placeholder="e.g., 3"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Peer Review Experience
+                                            </label>
+                                            <select
+                                                value={peerReviewExp}
+                                                onChange={(e) => setPeerReviewExp(e.target.value)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="">Select...</option>
+                                                <option value="none">None</option>
+                                                <option value="1-5">1-5 papers</option>
+                                                <option value="6-10">6-10 papers</option>
+                                                <option value="11+">11+ papers</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* LLM Experience */}
+                                <div className="pb-6">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4">LLM Experience</h2>
+                                    
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                How familiar are you with LLMs (ChatGPT, Claude, etc.)?
+                                            </label>
+                                            <div className="flex items-center space-x-4">
+                                                {[1, 2, 3, 4, 5].map(value => (
+                                                    <button
+                                                        key={value}
+                                                        type="button"
+                                                        onClick={() => setLlmFamiliarity(value.toString())}
+                                                        className={`w-12 h-12 rounded-full font-bold transition-colors ${
+                                                            llmFamiliarity === value.toString()
+                                                                ? 'bg-blue-600 text-white'
+                                                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                        }`}
+                                                    >
+                                                        {value}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-2">1 = Not familiar at all, 5 = Very familiar</p>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                How often do you use LLMs?
+                                            </label>
+                                            <select
+                                                value={llmUsageFreq}
+                                                onChange={(e) => setLlmUsageFreq(e.target.value)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="">Select...</option>
+                                                <option value="never">Never</option>
+                                                <option value="rarely">Rarely (once a month or less)</option>
+                                                <option value="sometimes">Sometimes (2-3 times per month)</option>
+                                                <option value="often">Often (once a week)</option>
+                                                <option value="very-often">Very often (daily)</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                What do you typically use LLMs for? (Select all that apply)
+                                            </label>
+                                            <div className="space-y-2">
+                                                {['Writing assistance', 'Code generation', 'Research assistance', 'Summarization', 'Translation', 'Learning new topics', 'Creative work'].map(use => (
+                                                    <label key={use} className="flex items-center space-x-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={llmUsedFor.includes(use)}
+                                                            onChange={() => handleLlmUseToggle(use)}
+                                                            className="w-4 h-4"
+                                                        />
+                                                        <span className="text-sm text-gray-700">{use}</span>
+                                                    </label>
+                                                ))}
+                                                <label className="flex items-center space-x-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={llmUsedFor.includes('Other')}
+                                                        onChange={() => handleLlmUseToggle('Other')}
+                                                        className="w-4 h-4"
+                                                    />
+                                                    <span className="text-sm text-gray-700">Other:</span>
+                                                    <input
+                                                        type="text"
+                                                        value={otherLlmUse}
+                                                        onChange={(e) => setOtherLlmUse(e.target.value)}
+                                                        className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                                                        placeholder="Please specify"
+                                                    />
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Submit */}
+                                <div className="pt-6">
+                                    <button
+                                        type="submit"
+                                        className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 font-medium transition-colors text-lg"
+                                    >
+                                        Start Experiment →
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<PreSurvey />, document.getElementById('root'));
+    </script>
+</body>
+</html>

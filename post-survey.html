@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post-Task Survey</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDPd-Fz-PdUwc9uvXAg_xEVR5FyPWCg_zA",
+            authDomain: "paper-understanding.firebaseapp.com",
+            projectId: "paper-understanding",
+            storageBucket: "paper-understanding.firebasestorage.app",
+            messagingSenderId: "702665730649",
+            appId: "1:702665730649:web:9858bde469085a240fdf48"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        function PostSurvey() {
+            // Get participant info from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const participantId = urlParams.get('participantId');
+            const condition = urlParams.get('condition');
+            const sessionId = urlParams.get('sessionId');
+
+            // Task Experience
+            const [taskDifficulty, setTaskDifficulty] = useState('3');
+            const [taskEngagement, setTaskEngagement] = useState('3');
+            const [taskConfidence, setTaskConfidence] = useState('3');
+            const [taskSatisfaction, setTaskSatisfaction] = useState('3');
+            
+            // LLM Usage (only for with_llm condition)
+            const [llmHelpfulness, setLlmHelpfulness] = useState('3');
+            const [llmTrust, setLlmTrust] = useState('3');
+            const [llmInfluence, setLlmInfluence] = useState('3');
+            const [llmAdvantages, setLlmAdvantages] = useState('');
+            const [llmDisadvantages, setLlmDisadvantages] = useState('');
+            
+            // Overall Feedback
+            const [strategies, setStrategies] = useState('');
+            const [challenges, setChallenges] = useState('');
+            const [improvements, setImprovements] = useState('');
+            const [additionalComments, setAdditionalComments] = useState('');
+
+            useEffect(() => {
+                if (!participantId) {
+                    alert('Missing participant information. Please start from the beginning.');
+                    window.location.href = 'pre-survey.html';
+                }
+            }, [participantId]);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+
+                const surveyData = {
+                    taskExperience: {
+                        difficulty: parseInt(taskDifficulty),
+                        engagement: parseInt(taskEngagement),
+                        confidence: parseInt(taskConfidence),
+                        satisfaction: parseInt(taskSatisfaction)
+                    },
+                    overallFeedback: {
+                        strategies,
+                        challenges,
+                        improvements,
+                        additionalComments
+                    },
+                    surveyCompletedAt: new Date().toISOString()
+                };
+
+                // Add LLM-specific questions if condition is with_llm
+                if (condition === 'with_llm') {
+                    surveyData.llmUsage = {
+                        helpfulness: parseInt(llmHelpfulness),
+                        trust: parseInt(llmTrust),
+                        influence: parseInt(llmInfluence),
+                        advantages: llmAdvantages,
+                        disadvantages: llmDisadvantages
+                    };
+                }
+
+                try {
+                    // Update Firebase with post-survey data
+                    const userRef = db.collection('users').doc(participantId);
+                    await userRef.update({
+                        postSurvey: surveyData,
+                        completedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    // Also update the experiment document if sessionId exists
+                    if (sessionId) {
+                        const experimentRef = db.collection('users').doc(participantId)
+                            .collection('experiments').doc(sessionId);
+                        await experimentRef.update({
+                            postSurvey: surveyData,
+                            status: 'completed_with_survey'
+                        });
+                    }
+
+                    console.log('✅ Post-survey saved');
+
+                    // Show completion message
+                    alert('Thank you for completing the survey! You may now close this window.');
+                    
+                } catch (error) {
+                    console.error('Error saving post-survey:', error);
+                    alert('Failed to save survey. Please try again.');
+                }
+            };
+
+            if (!participantId) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center">
+                        <p>Loading...</p>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-100 py-8 px-4">
+                    <div className="max-w-3xl mx-auto">
+                        <div className="bg-white rounded-xl shadow-2xl p-8">
+                            {/* Header */}
+                            <div className="text-center mb-8">
+                                <div className="text-5xl mb-4">🎉</div>
+                                <h1 className="text-3xl font-bold text-gray-800 mb-2">Post-Task Survey</h1>
+                                <p className="text-gray-600">Thank you for completing the experiment!</p>
+                                <p className="text-sm text-gray-500 mt-2">Participant: {participantId} | Condition: {condition}</p>
+                            </div>
+
+                            <form onSubmit={handleSubmit} className="space-y-8">
+                                {/* Task Experience */}
+                                <div className="border-b pb-6">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Task Experience</h2>
+                                    
+                                    <div className="space-y-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-3">
+                                                How difficult was the reading task?
+                                            </label>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs text-gray-500">Very Easy</span>
+                                                <div className="flex space-x-2">
+                                                    {[1, 2, 3, 4, 5].map(value => (
+                                                        <button
+                                                            key={value}
+                                                            type="button"
+                                                            onClick={() => setTaskDifficulty(value.toString())}
+                                                            className={`w-12 h-12 rounded-full font-bold transition-colors ${
+                                                                taskDifficulty === value.toString()
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                            }`}
+                                                        >
+                                                            {value}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <span className="text-xs text-gray-500">Very Difficult</span>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-3">
+                                                How engaged were you during the task?
+                                            </label>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs text-gray-500">Not Engaged</span>
+                                                <div className="flex space-x-2">
+                                                    {[1, 2, 3, 4, 5].map(value => (
+                                                        <button
+                                                            key={value}
+                                                            type="button"
+                                                            onClick={() => setTaskEngagement(value.toString())}
+                                                            className={`w-12 h-12 rounded-full font-bold transition-colors ${
+                                                                taskEngagement === value.toString()
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                            }`}
+                                                        >
+                                                            {value}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <span className="text-xs text-gray-500">Very Engaged</span>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-3">
+                                                How confident are you in your understanding of the paper?
+                                            </label>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs text-gray-500">Not Confident</span>
+                                                <div className="flex space-x-2">
+                                                    {[1, 2, 3, 4, 5].map(value => (
+                                                        <button
+                                                            key={value}
+                                                            type="button"
+                                                            onClick={() => setTaskConfidence(value.toString())}
+                                                            className={`w-12 h-12 rounded-full font-bold transition-colors ${
+                                                                taskConfidence === value.toString()
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                            }`}
+                                                        >
+                                                            {value}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <span className="text-xs text-gray-500">Very Confident</span>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-3">
+                                                How satisfied are you with your performance?
+                                            </label>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs text-gray-500">Not Satisfied</span>
+                                                <div className="flex space-x-2">
+                                                    {[1, 2, 3, 4, 5].map(value => (
+                                                        <button
+                                                            key={value}
+                                                            type="button"
+                                                            onClick={() => setTaskSatisfaction(value.toString())}
+                                                            className={`w-12 h-12 rounded-full font-bold transition-colors ${
+                                                                taskSatisfaction === value.toString()
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                            }`}
+                                                        >
+                                                            {value}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <span className="text-xs text-gray-500">Very Satisfied</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* LLM Usage (only for with_llm condition) */}
+                                {condition === 'with_llm' && (
+                                    <div className="border-b pb-6">
+                                        <h2 className="text-xl font-bold text-gray-800 mb-4">AI Assistant Experience</h2>
+                                        
+                                        <div className="space-y-6">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-3">
+                                                    How helpful was the AI assistant?
+                                                </label>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs text-gray-500">Not Helpful</span>
+                                                    <div className="flex space-x-2">
+                                                        {[1, 2, 3, 4, 5].map(value => (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                onClick={() => setLlmHelpfulness(value.toString())}
+                                                                className={`w-12 h-12 rounded-full font-bold transition-colors ${
+                                                                    llmHelpfulness === value.toString()
+                                                                        ? 'bg-purple-600 text-white'
+                                                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                                }`}
+                                                            >
+                                                                {value}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">Very Helpful</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-3">
+                                                    How much did you trust the AI's responses?
+                                                </label>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs text-gray-500">Did Not Trust</span>
+                                                    <div className="flex space-x-2">
+                                                        {[1, 2, 3, 4, 5].map(value => (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                onClick={() => setLlmTrust(value.toString())}
+                                                                className={`w-12 h-12 rounded-full font-bold transition-colors ${
+                                                                    llmTrust === value.toString()
+                                                                        ? 'bg-purple-600 text-white'
+                                                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                                }`}
+                                                            >
+                                                                {value}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">Fully Trusted</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-3">
+                                                    How much did the AI influence your understanding?
+                                                </label>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs text-gray-500">No Influence</span>
+                                                    <div className="flex space-x-2">
+                                                        {[1, 2, 3, 4, 5].map(value => (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                onClick={() => setLlmInfluence(value.toString())}
+                                                                className={`w-12 h-12 rounded-full font-bold transition-colors ${
+                                                                    llmInfluence === value.toString()
+                                                                        ? 'bg-purple-600 text-white'
+                                                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                                }`}
+                                                            >
+                                                                {value}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">Strong Influence</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    What were the main advantages of using the AI assistant?
+                                                </label>
+                                                <textarea
+                                                    value={llmAdvantages}
+                                                    onChange={(e) => setLlmAdvantages(e.target.value)}
+                                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-purple-500"
+                                                    rows="3"
+                                                    placeholder="Please describe..."
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    What were the main disadvantages or limitations?
+                                                </label>
+                                                <textarea
+                                                    value={llmDisadvantages}
+                                                    onChange={(e) => setLlmDisadvantages(e.target.value)}
+                                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-purple-500"
+                                                    rows="3"
+                                                    placeholder="Please describe..."
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Overall Feedback */}
+                                <div className="pb-6">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Overall Feedback</h2>
+                                    
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                What strategies did you use to understand the paper?
+                                            </label>
+                                            <textarea
+                                                value={strategies}
+                                                onChange={(e) => setStrategies(e.target.value)}
+                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500"
+                                                rows="3"
+                                                placeholder="e.g., reading abstract first, focusing on figures..."
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                What were the main challenges you faced?
+                                            </label>
+                                            <textarea
+                                                value={challenges}
+                                                onChange={(e) => setChallenges(e.target.value)}
+                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500"
+                                                rows="3"
+                                                placeholder="Please describe..."
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                How could this reading experience be improved?
+                                            </label>
+                                            <textarea
+                                                value={improvements}
+                                                onChange={(e) => setImprovements(e.target.value)}
+                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500"
+                                                rows="3"
+                                                placeholder="Please describe..."
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Any additional comments?
+                                            </label>
+                                            <textarea
+                                                value={additionalComments}
+                                                onChange={(e) => setAdditionalComments(e.target.value)}
+                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500"
+                                                rows="3"
+                                                placeholder="Optional..."
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Submit */}
+                                <div className="pt-6">
+                                    <button
+                                        type="submit"
+                                        className="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 font-medium transition-colors text-lg"
+                                    >
+                                        Submit Survey
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<PostSurvey />, document.getElementById('root'));
+    </script>
+</body>
+</html>

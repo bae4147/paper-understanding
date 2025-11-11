@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Paper Reading Study</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        function LandingPage() {
+            const [participantId, setParticipantId] = useState('');
+            const [hasConsented, setHasConsented] = useState(false);
+            const [currentStep, setCurrentStep] = useState(0); // 0: welcome, 1: info, 2: consent, 3: start
+
+            const handleBegin = () => {
+                if (!participantId.trim()) {
+                    alert('Please enter a Participant ID');
+                    return;
+                }
+                
+                if (!hasConsented) {
+                    alert('Please read and agree to the consent form');
+                    return;
+                }
+
+                // Navigate to pre-survey with participant ID
+                window.location.href = `pre-survey.html?participantId=${encodeURIComponent(participantId)}`;
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50">
+                    {/* Progress bar */}
+                    <div className="bg-white shadow-sm">
+                        <div className="max-w-4xl mx-auto px-6 py-3">
+                            <div className="flex items-center justify-between text-sm">
+                                <div className={`flex-1 text-center ${currentStep >= 0 ? 'text-blue-600 font-semibold' : 'text-gray-400'}`}>
+                                    Welcome
+                                </div>
+                                <div className="w-12 h-1 bg-gray-300 mx-2">
+                                    <div className={`h-full bg-blue-600 transition-all ${currentStep >= 1 ? 'w-full' : 'w-0'}`}></div>
+                                </div>
+                                <div className={`flex-1 text-center ${currentStep >= 1 ? 'text-blue-600 font-semibold' : 'text-gray-400'}`}>
+                                    Study Info
+                                </div>
+                                <div className="w-12 h-1 bg-gray-300 mx-2">
+                                    <div className={`h-full bg-blue-600 transition-all ${currentStep >= 2 ? 'w-full' : 'w-0'}`}></div>
+                                </div>
+                                <div className={`flex-1 text-center ${currentStep >= 2 ? 'text-blue-600 font-semibold' : 'text-gray-400'}`}>
+                                    Consent
+                                </div>
+                                <div className="w-12 h-1 bg-gray-300 mx-2">
+                                    <div className={`h-full bg-blue-600 transition-all ${currentStep >= 3 ? 'w-full' : 'w-0'}`}></div>
+                                </div>
+                                <div className={`flex-1 text-center ${currentStep >= 3 ? 'text-blue-600 font-semibold' : 'text-gray-400'}`}>
+                                    Start
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="max-w-4xl mx-auto px-6 py-12">
+                        {/* Step 0: Welcome */}
+                        {currentStep === 0 && (
+                            <div className="bg-white rounded-2xl shadow-2xl p-12 text-center">
+                                <div className="text-6xl mb-6">📚</div>
+                                <h1 className="text-4xl font-bold text-gray-800 mb-4">
+                                    Welcome to the Academic Paper Reading Study
+                                </h1>
+                                <p className="text-xl text-gray-600 mb-8">
+                                    Thank you for your interest in participating in our research!
+                                </p>
+                                
+                                <div className="bg-blue-50 border-l-4 border-blue-500 p-6 mb-8 text-left">
+                                    <h3 className="font-bold text-lg mb-3">What to Expect:</h3>
+                                    <ul className="space-y-2 text-gray-700">
+                                        <li>✓ <strong>Duration:</strong> Approximately 90 minutes</li>
+                                        <li>✓ <strong>Tasks:</strong> Reading, comprehension quiz, and peer review</li>
+                                        <li>✓ <strong>Location:</strong> Online (complete at your own pace)</li>
+                                        <li>✓ <strong>Compensation:</strong> [To be specified]</li>
+                                    </ul>
+                                </div>
+
+                                <button
+                                    onClick={() => setCurrentStep(1)}
+                                    className="px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-lg font-medium transition-colors"
+                                >
+                                    Continue →
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Step 1: Study Information */}
+                        {currentStep === 1 && (
+                            <div className="bg-white rounded-2xl shadow-2xl p-10">
+                                <h2 className="text-3xl font-bold text-gray-800 mb-6">Study Information</h2>
+                                
+                                <div className="space-y-6 text-gray-700">
+                                    <div>
+                                        <h3 className="text-xl font-semibold mb-3">Purpose</h3>
+                                        <p>
+                                            This study investigates how AI assistants (Large Language Models) affect 
+                                            academic paper reading comprehension and critical evaluation among researchers.
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <h3 className="text-xl font-semibold mb-3">Procedures</h3>
+                                        <ol className="list-decimal list-inside space-y-2 ml-4">
+                                            <li><strong>Pre-Task Survey</strong> (5 min): Background and experience questionnaire</li>
+                                            <li><strong>Reading Phase</strong> (30 min): Read an academic paper with/without AI assistance</li>
+                                            <li><strong>Comprehension Quiz</strong> (15 min): Closed-book questions about the paper</li>
+                                            <li><strong>Peer Review</strong> (30 min): Write a structured review of the paper</li>
+                                            <li><strong>Post-Task Survey</strong> (10 min): Experience and feedback questionnaire</li>
+                                        </ol>
+                                    </div>
+
+                                    <div>
+                                        <h3 className="text-xl font-semibold mb-3">Data Collection</h3>
+                                        <p>
+                                            We will collect behavioral data including reading patterns (scroll events, time spent), 
+                                            AI interaction logs (if applicable), quiz responses, and written reviews. 
+                                            All data will be anonymized and used solely for research purposes.
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <h3 className="text-xl font-semibold mb-3">Risks & Benefits</h3>
+                                        <p>
+                                            <strong>Risks:</strong> Minimal. You may experience mild eye strain or fatigue from reading.<br/>
+                                            <strong>Benefits:</strong> You will gain experience with academic paper analysis and contribute to 
+                                            research on AI-assisted learning.
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <h3 className="text-xl font-semibold mb-3">Voluntary Participation</h3>
+                                        <p>
+                                            Your participation is completely voluntary. You may withdraw at any time without penalty.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex space-x-4 mt-8">
+                                    <button
+                                        onClick={() => setCurrentStep(0)}
+                                        className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
+                                    >
+                                        ← Back
+                                    </button>
+                                    <button
+                                        onClick={() => setCurrentStep(2)}
+                                        className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+                                    >
+                                        Continue →
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Step 2: Consent Form */}
+                        {currentStep === 2 && (
+                            <div className="bg-white rounded-2xl shadow-2xl p-10">
+                                <h2 className="text-3xl font-bold text-gray-800 mb-6">Informed Consent</h2>
+                                
+                                <div className="bg-gray-50 border border-gray-300 rounded-lg p-6 max-h-96 overflow-y-auto mb-6">
+                                    <div className="space-y-4 text-sm text-gray-700">
+                                        <p className="font-semibold">CONSENT TO PARTICIPATE IN RESEARCH</p>
+                                        
+                                        <p>
+                                            <strong>Study Title:</strong> Understanding the Impact of Large Language Models on 
+                                            Academic Paper Reading Comprehension
+                                        </p>
+                                        
+                                        <p>
+                                            <strong>Principal Investigator:</strong> [Your Name]<br/>
+                                            <strong>Institution:</strong> Seoul National University<br/>
+                                            <strong>Contact:</strong> [Your Email]
+                                        </p>
+
+                                        <div>
+                                            <p className="font-semibold mb-2">You are being asked to participate in a research study.</p>
+                                            <p>
+                                                Before you agree, the researcher will explain the study to you through this 
+                                                information sheet. You should feel free to ask questions if there is anything 
+                                                you do not understand.
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <p className="font-semibold mb-2">Purpose of the Study</p>
+                                            <p>
+                                                The purpose of this study is to investigate how AI language models affect 
+                                                researchers' ability to comprehend and critically evaluate academic papers.
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <p className="font-semibold mb-2">Study Procedures</p>
+                                            <p>
+                                                If you agree to participate, you will be asked to:
+                                            </p>
+                                            <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
+                                                <li>Complete a pre-task questionnaire about your background and experience</li>
+                                                <li>Read an academic paper (with or without AI assistance, randomly assigned)</li>
+                                                <li>Complete a comprehension quiz about the paper</li>
+                                                <li>Write a structured peer review of the paper</li>
+                                                <li>Complete a post-task questionnaire about your experience</li>
+                                            </ul>
+                                            <p className="mt-2">
+                                                The entire study will take approximately 90 minutes. Your reading patterns, 
+                                                AI interactions (if applicable), and responses will be recorded automatically.
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <p className="font-semibold mb-2">Risks and Discomforts</p>
+                                            <p>
+                                                The risks associated with this study are minimal. You may experience mild 
+                                                eye strain or mental fatigue from extended reading. You may take breaks as needed.
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <p className="font-semibold mb-2">Benefits</p>
+                                            <p>
+                                                You may not receive any direct benefits from participating in this study. 
+                                                However, your participation will contribute to understanding how AI tools 
+                                                can be designed to better support academic research activities.
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <p className="font-semibold mb-2">Confidentiality</p>
+                                            <p>
+                                                Your participation in this study will remain confidential. All data will be 
+                                                stored securely and only the research team will have access to it. Your 
+                                                participant ID will be used instead of your name, and any published results 
+                                                will not identify you personally.
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <p className="font-semibold mb-2">Voluntary Participation</p>
+                                            <p>
+                                                Your participation in this study is completely voluntary. You may refuse to 
+                                                participate or withdraw from the study at any time without penalty. If you 
+                                                withdraw, your data will be deleted unless you specify otherwise.
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <p className="font-semibold mb-2">Questions</p>
+                                            <p>
+                                                If you have any questions about this study, please contact:<br/>
+                                                [Your Name] at [Your Email]
+                                            </p>
+                                        </div>
+
+                                        <div className="border-t border-gray-300 pt-4 mt-6">
+                                            <p className="font-semibold mb-2">Statement of Consent</p>
+                                            <p>
+                                                By checking the box below and clicking "I Agree", you indicate that:
+                                            </p>
+                                            <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
+                                                <li>You have read and understood the information above</li>
+                                                <li>You voluntarily agree to participate in this study</li>
+                                                <li>You are at least 18 years old</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6">
+                                    <label className="flex items-start space-x-3 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={hasConsented}
+                                            onChange={(e) => setHasConsented(e.target.checked)}
+                                            className="w-5 h-5 mt-1 flex-shrink-0"
+                                        />
+                                        <span className="text-sm">
+                                            <strong>I have read the consent form and agree to participate in this study.</strong>
+                                            {' '}I understand that my participation is voluntary and that I may withdraw at any time.
+                                        </span>
+                                    </label>
+                                </div>
+
+                                <div className="flex space-x-4">
+                                    <button
+                                        onClick={() => setCurrentStep(1)}
+                                        className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
+                                    >
+                                        ← Back
+                                    </button>
+                                    <button
+                                        onClick={() => setCurrentStep(3)}
+                                        disabled={!hasConsented}
+                                        className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium transition-colors"
+                                    >
+                                        Continue →
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Step 3: Participant ID Entry */}
+                        {currentStep === 3 && (
+                            <div className="bg-white rounded-2xl shadow-2xl p-12 text-center">
+                                <div className="text-5xl mb-6">✅</div>
+                                <h2 className="text-3xl font-bold text-gray-800 mb-4">Ready to Begin!</h2>
+                                <p className="text-gray-600 mb-8">
+                                    Please enter your Participant ID to continue.
+                                </p>
+
+                                <div className="max-w-md mx-auto mb-8">
+                                    <label className="block text-left text-sm font-medium text-gray-700 mb-2">
+                                        Participant ID *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={participantId}
+                                        onChange={(e) => setParticipantId(e.target.value)}
+                                        placeholder="e.g., P001"
+                                        className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        autoFocus
+                                    />
+                                    <p className="text-sm text-gray-500 mt-2">
+                                        This ID will be provided by the researcher.
+                                    </p>
+                                </div>
+
+                                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-8 text-left max-w-md mx-auto">
+                                    <p className="text-sm text-gray-700">
+                                        <strong>Important:</strong> Please ensure you have:
+                                    </p>
+                                    <ul className="list-disc list-inside ml-4 mt-2 text-sm text-gray-700 space-y-1">
+                                        <li>A stable internet connection</li>
+                                        <li>Approximately 90 minutes of uninterrupted time</li>
+                                        <li>A quiet environment for focused reading</li>
+                                    </ul>
+                                </div>
+
+                                <div className="flex space-x-4 max-w-md mx-auto">
+                                    <button
+                                        onClick={() => setCurrentStep(2)}
+                                        className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
+                                    >
+                                        ← Back
+                                    </button>
+                                    <button
+                                        onClick={handleBegin}
+                                        disabled={!participantId.trim()}
+                                        className="flex-1 px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium text-lg transition-colors"
+                                    >
+                                        Begin Study →
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="max-w-4xl mx-auto px-6 pb-8 text-center text-sm text-gray-500">
+                        <p>Seoul National University | Graduate School of Data Science</p>
+                        <p className="mt-2">If you have questions, please contact: [Your Email]</p>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<LandingPage />, document.getElementById('root'));
+    </script>
+</body>
+</html>
