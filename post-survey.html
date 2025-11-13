@@ -58,6 +58,9 @@
             const [improvements, setImprovements] = useState('');
             const [additionalComments, setAdditionalComments] = useState('');
 
+            // Bank Account for compensation
+            const [bankAccount, setBankAccount] = useState('');
+
             useEffect(() => {
                 if (!participantId) {
                     alert('Missing participant information. Please start from the beginning.');
@@ -67,6 +70,12 @@
 
             const handleSubmit = async (e) => {
                 e.preventDefault();
+
+                // Validate bank account
+                if (!bankAccount.trim()) {
+                    alert('사례 지급을 위한 계좌 정보를 입력해주세요.');
+                    return;
+                }
 
                 const surveyData = {
                     taskExperience: {
@@ -81,6 +90,7 @@
                         improvements,
                         additionalComments
                     },
+                    bankAccount: bankAccount.trim(),
                     surveyCompletedAt: new Date().toISOString()
                 };
 
@@ -428,13 +438,45 @@
                                     </div>
                                 </div>
 
+                                {/* Bank Account Information */}
+                                <div className="border-t pt-6">
+                                    <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-xl p-8 mb-6">
+                                        <div className="text-center mb-6">
+                                            <div className="text-4xl mb-3">🎁</div>
+                                            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                                                실험에 참여해주셔서 감사합니다!
+                                            </h2>
+                                            <p className="text-gray-600">
+                                                사례 지급을 위해 계좌 정보를 입력해주세요.
+                                            </p>
+                                        </div>
+
+                                        <div className="max-w-md mx-auto">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                계좌 정보 *
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={bankAccount}
+                                                onChange={(e) => setBankAccount(e.target.value)}
+                                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder="예: 신한 110-125-****** 김ㅁㅁ"
+                                                required
+                                            />
+                                            <p className="text-xs text-gray-500 mt-2">
+                                                은행명, 계좌번호, 예금주명을 입력해주세요.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* Submit */}
                                 <div className="pt-6">
                                     <button
                                         type="submit"
                                         className="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 font-medium transition-colors text-lg"
                                     >
-                                        Submit Survey
+                                        제출하기
                                     </button>
                                 </div>
                             </form>

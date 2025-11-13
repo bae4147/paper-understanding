@@ -118,11 +118,13 @@
             const [sessionOrder, setSessionOrder] = useState([]); // Loaded from Firebase
 
             // Experiment flow state
-            const [phase, setPhase] = useState('setup'); // setup, reading, quiz, review, complete
+            const [phase, setPhase] = useState('setup'); // setup, reading-guide, reading, quiz-guide, quiz, review-guide, review, session-complete, all-complete
             const [participantId, setParticipantId] = useState('');
             const [condition, setCondition] = useState('without_llm');
             const [currentPaper, setCurrentPaper] = useState('');
             const [sessionId] = useState(`session_${Date.now()}`);
+            const [showFinishPopup, setShowFinishPopup] = useState(false); // For finish confirmation popups
+            const [bankAccount, setBankAccount] = useState(''); // For compensation
 
             // Reading phase state
             const [scrollPosition, setScrollPosition] = useState(0);
@@ -277,9 +279,8 @@
                                         setPaperContent('<p>Error: Could not load paper content</p>');
                                     }
 
-                                    setPhase('reading');
-                                    setReadingActive(true);
-                                    logEvent('reading_started');
+                                    setPhase('reading-guide');
+                                    logEvent('reading_guide_shown');
                                 })
                                 .catch(error => {
                                     console.error('Error loading paper:', error);
@@ -1042,10 +1043,8 @@
                     console.error('❌ Failed to save reading summary:', error);
                 }
                 
-                setPhase('quiz');
-                setQuizActive(true);
-                phaseStartTime.current = Date.now(); // Reset for quiz phase
-                logEvent('quiz_phase_start');
+                setPhase('quiz-guide');
+                logEvent('quiz_guide_shown');
             };
 
             // Handle quiz answer
@@ -1081,10 +1080,8 @@
                     console.error('❌ Failed to save quiz data:', error);
                 }
                 
-                setPhase('review');
-                setReviewActive(true);
-                phaseStartTime.current = Date.now(); // Reset for review phase
-                logEvent('review_phase_start');
+                setPhase('review-guide');
+                logEvent('review_guide_shown');
             };
 
             // Handle review change
@@ -1263,6 +1260,61 @@
                 );
             }
 
+            // READING GUIDE PHASE
+            if (phase === 'reading-guide') {
+                const paper = papers.find(p => p.id === currentPaper);
+                const conditionText = condition === 'with_llm' ? 'AI 지원 O' : 'AI 지원 X';
+
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl p-12 max-w-3xl w-full">
+                            <div className="text-center mb-8">
+                                <div className="text-5xl mb-4">📖</div>
+                                <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                                    Session {sessionNumber} - Reading
+                                </h1>
+                                <p className="text-lg text-gray-600">논문 읽기 세션을 시작합니다</p>
+                            </div>
+
+                            <div className="space-y-6 mb-8">
+                                <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
+                                    <p className="text-sm text-blue-900">
+                                        <strong>조건:</strong> {conditionText}
+                                    </p>
+                                </div>
+
+                                <div className="bg-gray-50 rounded-lg p-6">
+                                    <h3 className="font-bold text-lg text-gray-800 mb-2">논문 제목</h3>
+                                    <p className="text-gray-700">{paper?.name}</p>
+                                </div>
+
+                                <div className="bg-gray-50 rounded-lg p-6">
+                                    <h3 className="font-bold text-lg text-gray-800 mb-2">제한 시간</h3>
+                                    <p className="text-3xl font-bold text-blue-600">30분</p>
+                                </div>
+
+                                <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4">
+                                    <p className="text-sm text-yellow-900">
+                                        <strong>중요:</strong> 주어진 논문을 읽어본 적이 있다면 연구자에게 말해주세요.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    setPhase('reading');
+                                    setReadingActive(true);
+                                    logEvent('reading_started');
+                                }}
+                                className="w-full px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-lg font-medium transition-colors"
+                            >
+                                시작하기 →
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
             // READING PHASE
             if (phase === 'reading') {
                 return (
@@ -1285,7 +1337,7 @@
                                     onComplete={() => alert('Reading time is up! Please proceed to the quiz.')}
                                 />
                                 <button
-                                    onClick={completeReading}
+                                    onClick={() => setShowFinishPopup(true)}
                                     className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
                                 >
                                     <CheckIcon />
@@ -1481,6 +1533,78 @@
                                 </div>
                             )}
                         </div>
+
+                        {/* Finish Reading Popup */}
+                        {showFinishPopup && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4">
+                                    <h3 className="text-2xl font-bold text-gray-800 mb-4">리딩 세션을 끝낼까요?</h3>
+                                    <p className="text-gray-600 mb-6">
+                                        리딩 세션을 종료하고 다음 단계로 진행합니다.
+                                    </p>
+                                    <div className="flex space-x-4">
+                                        <button
+                                            onClick={() => setShowFinishPopup(false)}
+                                            className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
+                                        >
+                                            취소
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setShowFinishPopup(false);
+                                                completeReading();
+                                            }}
+                                            className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+                                        >
+                                            확인
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+
+            // QUIZ GUIDE PHASE
+            if (phase === 'quiz-guide') {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl p-12 max-w-3xl w-full">
+                            <div className="text-center mb-8">
+                                <div className="text-5xl mb-4">📝</div>
+                                <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                                    Session {sessionNumber} - Quiz
+                                </h1>
+                                <p className="text-lg text-gray-600">논문 이해도 퀴즈</p>
+                            </div>
+
+                            <div className="space-y-6 mb-8">
+                                <div className="bg-gray-50 rounded-lg p-6">
+                                    <h3 className="font-bold text-lg text-gray-800 mb-2">안내</h3>
+                                    <p className="text-gray-700">
+                                        논문에 대한 내용을 기반으로 문제를 해결합니다.
+                                    </p>
+                                </div>
+
+                                <div className="bg-gray-50 rounded-lg p-6">
+                                    <h3 className="font-bold text-lg text-gray-800 mb-2">제한 시간</h3>
+                                    <p className="text-3xl font-bold text-purple-600">15분</p>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    setPhase('quiz');
+                                    setQuizActive(true);
+                                    phaseStartTime.current = Date.now();
+                                    logEvent('quiz_phase_start');
+                                }}
+                                className="w-full px-8 py-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-lg font-medium transition-colors"
+                            >
+                                시작하기 →
+                            </button>
+                        </div>
                     </div>
                 );
             }
@@ -1502,7 +1626,7 @@
                                     onComplete={() => alert('Quiz time is up!')}
                                 />
                                 <button
-                                    onClick={completeQuiz}
+                                    onClick={() => setShowFinishPopup(true)}
                                     className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
                                 >
                                     Submit Quiz
@@ -1554,6 +1678,78 @@
                                 </p>
                             </div>
                         </div>
+
+                        {/* Finish Quiz Popup */}
+                        {showFinishPopup && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4">
+                                    <h3 className="text-2xl font-bold text-gray-800 mb-4">퀴즈 세션을 끝낼까요?</h3>
+                                    <p className="text-gray-600 mb-6">
+                                        퀴즈 세션을 종료하고 다음 단계로 진행합니다.
+                                    </p>
+                                    <div className="flex space-x-4">
+                                        <button
+                                            onClick={() => setShowFinishPopup(false)}
+                                            className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
+                                        >
+                                            취소
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setShowFinishPopup(false);
+                                                completeQuiz();
+                                            }}
+                                            className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium transition-colors"
+                                        >
+                                            확인
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+
+            // REVIEW GUIDE PHASE
+            if (phase === 'review-guide') {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-green-50 to-teal-100 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl p-12 max-w-3xl w-full">
+                            <div className="text-center mb-8">
+                                <div className="text-5xl mb-4">✍️</div>
+                                <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                                    Session {sessionNumber} - Review
+                                </h1>
+                                <p className="text-lg text-gray-600">논문 리뷰 작성</p>
+                            </div>
+
+                            <div className="space-y-6 mb-8">
+                                <div className="bg-gray-50 rounded-lg p-6">
+                                    <h3 className="font-bold text-lg text-gray-800 mb-2">안내</h3>
+                                    <p className="text-gray-700">
+                                        논문에 대한 리뷰를 작성합니다.
+                                    </p>
+                                </div>
+
+                                <div className="bg-gray-50 rounded-lg p-6">
+                                    <h3 className="font-bold text-lg text-gray-800 mb-2">제한 시간</h3>
+                                    <p className="text-3xl font-bold text-green-600">20분</p>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    setPhase('review');
+                                    setReviewActive(true);
+                                    phaseStartTime.current = Date.now();
+                                    logEvent('review_phase_start');
+                                }}
+                                className="w-full px-8 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 text-lg font-medium transition-colors"
+                            >
+                                시작하기 →
+                            </button>
+                        </div>
                     </div>
                 );
             }
@@ -1575,7 +1771,7 @@
                                     onComplete={() => alert('Review time is up!')}
                                 />
                                 <button
-                                    onClick={completeReview}
+                                    onClick={() => setShowFinishPopup(true)}
                                     className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
                                 >
                                     Submit Review
@@ -1656,6 +1852,35 @@
                                 </div>
                             </div>
                         </div>
+
+                        {/* Finish Review Popup */}
+                        {showFinishPopup && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4">
+                                    <h3 className="text-2xl font-bold text-gray-800 mb-4">리뷰 세션을 끝낼까요?</h3>
+                                    <p className="text-gray-600 mb-6">
+                                        리뷰 세션을 종료하고 세션을 완료합니다.
+                                    </p>
+                                    <div className="flex space-x-4">
+                                        <button
+                                            onClick={() => setShowFinishPopup(false)}
+                                            className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
+                                        >
+                                            취소
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setShowFinishPopup(false);
+                                                completeReview();
+                                            }}
+                                            className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors"
+                                        >
+                                            확인
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 );
             }
@@ -1691,13 +1916,19 @@
                         <div className="bg-white rounded-xl shadow-2xl p-12 max-w-2xl w-full text-center">
                             <div className="text-6xl mb-6">🎉</div>
                             <h1 className="text-4xl font-bold text-gray-800 mb-4">
-                                {mode === 'experiment' && sessionNumber === 1 ? '1차 세션 완료!' : '실험 완료!'}
+                                {mode === 'experiment' && sessionNumber === 1 ? 'Session 1 종료!' : 'Session 2 종료!'}
                             </h1>
-                            <p className="text-xl text-gray-600 mb-8">
+                            <p className="text-xl text-gray-600 mb-4">
                                 {mode === 'experiment' && sessionNumber === 1
-                                    ? '1차 세션이 완료되었습니다. 잠시 쉬었다가 2차 세션을 시작하세요.'
-                                    : '연구에 참여해주셔서 감사합니다.'}
+                                    ? 'Session 1이 종료되었습니다.'
+                                    : 'Session 2가 종료되었습니다.'}
                             </p>
+                            {mode === 'experiment' && sessionNumber === 1 && (
+                                <p className="text-gray-600 mb-8">
+                                    다음 세션으로 넘어가기 위해서는 다음 버튼을 눌러주세요.<br/>
+                                    필요시 휴식을 취하실 수 있습니다.
+                                </p>
+                            )}
 
                             <div className="bg-gray-50 rounded-lg p-6 mb-8 text-left">
                                 <h3 className="font-bold text-lg mb-4">요약</h3>
