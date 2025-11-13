@@ -16,9 +16,14 @@
         const { useState } = React;
 
         function LandingPage() {
+            const [mode, setMode] = useState(null); // null: mode selection, 'experiment', 'test'
             const [participantId, setParticipantId] = useState('');
             const [hasConsented, setHasConsented] = useState(false);
             const [currentStep, setCurrentStep] = useState(0); // 0: welcome, 1: info, 2: consent, 3: start
+
+            // Test mode specific states
+            const [testCondition, setTestCondition] = useState('');
+            const [testPaper, setTestPaper] = useState('');
 
             const handleBegin = () => {
                 if (!participantId.trim()) {
@@ -26,18 +31,72 @@
                     return;
                 }
 
-                if (!hasConsented) {
+                if (mode === 'experiment' && !hasConsented) {
                     alert('동의서를 읽고 동의해주세요');
                     return;
                 }
 
-                // Navigate to pre-survey with participant ID
-                window.location.href = `pre-survey.html?participantId=${encodeURIComponent(participantId)}`;
+                // Navigate to pre-survey with participant ID and mode
+                window.location.href = `pre-survey.html?participantId=${encodeURIComponent(participantId)}&mode=experiment`;
+            };
+
+            const handleTestBegin = () => {
+                if (!participantId.trim()) {
+                    alert('참여자 ID를 입력해주세요');
+                    return;
+                }
+                if (!testCondition) {
+                    alert('컨디션을 선택해주세요');
+                    return;
+                }
+                if (!testPaper) {
+                    alert('논문을 선택해주세요');
+                    return;
+                }
+
+                // Navigate directly to reading phase with test parameters
+                window.location.href = `reading.html?participantId=${encodeURIComponent(participantId)}&condition=${testCondition}&paper=${testPaper}&mode=test`;
             };
 
             return (
                 <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50">
-                    {/* Progress bar */}
+                    {/* Mode Selection */}
+                    {mode === null && (
+                        <div className="max-w-4xl mx-auto px-6 py-12">
+                            <div className="bg-white rounded-2xl shadow-2xl p-12 text-center">
+                                <div className="text-6xl mb-6">🔬</div>
+                                <h1 className="text-4xl font-bold text-gray-800 mb-4">
+                                    실험 시스템
+                                </h1>
+                                <p className="text-xl text-gray-600 mb-12">
+                                    모드를 선택해주세요
+                                </p>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+                                    <button
+                                        onClick={() => setMode('experiment')}
+                                        className="p-8 bg-blue-50 border-2 border-blue-200 rounded-xl hover:bg-blue-100 hover:border-blue-400 transition-all"
+                                    >
+                                        <div className="text-4xl mb-4">👥</div>
+                                        <h3 className="text-2xl font-bold text-gray-800 mb-2">실험 모드</h3>
+                                        <p className="text-gray-600">참가자용 정식 실험</p>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setMode('test')}
+                                        className="p-8 bg-purple-50 border-2 border-purple-200 rounded-xl hover:bg-purple-100 hover:border-purple-400 transition-all"
+                                    >
+                                        <div className="text-4xl mb-4">⚙️</div>
+                                        <h3 className="text-2xl font-bold text-gray-800 mb-2">테스트 모드</h3>
+                                        <p className="text-gray-600">연구자용 테스트</p>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Progress bar - only show in experiment mode */}
+                    {mode === 'experiment' && (
                     <div className="bg-white shadow-sm">
                         <div className="max-w-4xl mx-auto px-6 py-3">
                             <div className="flex items-center justify-between text-sm">
@@ -65,7 +124,10 @@
                             </div>
                         </div>
                     </div>
+                    )}
 
+                    {/* Experiment Mode Flow */}
+                    {mode === 'experiment' && (
                     <div className="max-w-4xl mx-auto px-6 py-12">
                         {/* Step 0: Welcome */}
                         {currentStep === 0 && (
@@ -82,9 +144,8 @@
                                     <h3 className="font-bold text-lg mb-3">실험 진행:</h3>
                                     <ul className="space-y-2 text-gray-700">
                                         <li>✓ <strong>예상 소요시간:</strong> 약 2시간</li>
-                                        <li>✓ <strong>세션 정보:</strong> 논문 읽기(30분) - 퀴즈(15분) - 리뷰작성(20분)</li>
-                                        // <li>✓ <strong>Location:</strong> Online (complete at your own pace)</li>
-                                        // <li>✓ <strong>Compensation:</strong> [To be specified]</li>
+                                        <li>✓ <strong>세션 구성:</strong> 2회 진행 (AI 지원 O / AI 지원 X, 순서는 무작위 배정)</li>
+                                        <li>✓ <strong>각 세션:</strong> 논문 읽기(30분) → 퀴즈(15분) → 리뷰작성(20분)</li>
                                     </ul>
                                 </div>
 
@@ -106,19 +167,21 @@
                                     <div>
                                         <h3 className="text-xl font-semibold mb-3">목적</h3>
                                         <p>
-                                            본 연구는 AI 어시스턴트(대규모 언어 모델)가 연구자들의 학술 논문 읽기 이해도 및 비판적 평가에 어떤 영향을 미치는지 조사합니다.
+                                            본 연구는 연구자들이 LLM 기반 AI 어시스턴트를 활용하는 것이 논문을 읽는 패턴과 논문에 대한 이해도에 미치는 영향을 탐색하는 것을 목표로 합니다.
                                         </p>
                                     </div>
 
                                     <div>
                                         <h3 className="text-xl font-semibold mb-3">절차</h3>
                                         <ol className="list-decimal list-inside space-y-2 ml-4">
-                                            <li><strong>사전 설문</strong> (5분): 배경 및 경험에 관한 설문지</li>
-                                            <li><strong>논문 읽기</strong> (30분): AI 지원 유무에 따라 학술 논문 읽기</li>
-                                            <li><strong>이해도 퀴즈</strong> (15분): 논문에 대한 객관식 문제</li>
-                                            <li><strong>피어 리뷰</strong> (30분): 논문에 대한 구조화된 리뷰 작성</li>
+                                            <li><strong>사전 설문</strong> (5분): 연구 및 LLM 사용 경험에 관한 설문</li>
+                                            <li><strong>1차 세션</strong> (65분): 논문 읽기 → 퀴즈 → 리뷰 작성</li>
+                                            <li><strong>2차 세션</strong> (65분): 논문 읽기 → 퀴즈 → 리뷰 작성 (다른 조건)</li>
                                             <li><strong>사후 설문</strong> (10분): 경험 및 피드백 설문지</li>
                                         </ol>
+                                        <p className="mt-3 text-sm text-gray-600">
+                                            * 두 세션의 AI 지원 유무 순서는 무작위로 배정됩니다.
+                                        </p>
                                     </div>
 
                                     <div>
@@ -355,6 +418,80 @@
                             </div>
                         )}
                     </div>
+                    )}
+
+                    {/* Test Mode Flow */}
+                    {mode === 'test' && (
+                        <div className="max-w-4xl mx-auto px-6 py-12">
+                            <div className="bg-white rounded-2xl shadow-2xl p-12">
+                                <div className="text-5xl mb-6 text-center">⚙️</div>
+                                <h2 className="text-3xl font-bold text-gray-800 mb-4 text-center">테스트 모드</h2>
+                                <p className="text-gray-600 mb-8 text-center">
+                                    연구자용 테스트 설정
+                                </p>
+
+                                <div className="max-w-md mx-auto space-y-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            참여자 ID *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={participantId}
+                                            onChange={(e) => setParticipantId(e.target.value)}
+                                            placeholder="예: TEST001"
+                                            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            컨디션 *
+                                        </label>
+                                        <select
+                                            value={testCondition}
+                                            onChange={(e) => setTestCondition(e.target.value)}
+                                            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                        >
+                                            <option value="">선택하세요</option>
+                                            <option value="with-ai">AI 지원 O</option>
+                                            <option value="without-ai">AI 지원 X</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            논문 선택 *
+                                        </label>
+                                        <select
+                                            value={testPaper}
+                                            onChange={(e) => setTestPaper(e.target.value)}
+                                            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                        >
+                                            <option value="">선택하세요</option>
+                                            <option value="paper1">논문 1</option>
+                                            <option value="paper2">논문 2</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="flex space-x-4 max-w-md mx-auto mt-8">
+                                    <button
+                                        onClick={() => setMode(null)}
+                                        className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
+                                    >
+                                        ← 뒤로
+                                    </button>
+                                    <button
+                                        onClick={handleTestBegin}
+                                        className="flex-1 px-8 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium text-lg transition-colors"
+                                    >
+                                        테스트 시작 →
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Footer */}
                     <div className="max-w-4xl mx-auto px-6 pb-8 text-center text-sm text-gray-500">

@@ -112,6 +112,11 @@
 
         // Main Application Component
         function PDFReadingExperiment() {
+            // Experiment mode state
+            const [mode, setMode] = useState('experiment'); // 'experiment' or 'test'
+            const [sessionNumber, setSessionNumber] = useState(1); // 1 or 2 for experiment mode
+            const [sessionOrder, setSessionOrder] = useState([]); // Loaded from Firebase
+
             // Experiment flow state
             const [phase, setPhase] = useState('setup'); // setup, reading, quiz, review, complete
             const [participantId, setParticipantId] = useState('');
@@ -211,6 +216,72 @@
                 'Discussion': { start: 2200, end: 2800 },
                 'Conclusion': { start: 2800, end: 3200 },
             });
+
+            // Initialize from URL parameters
+            useEffect(() => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlPid = urlParams.get('participantId');
+                const urlCondition = urlParams.get('condition');
+                const urlPaper = urlParams.get('paper');
+                const urlMode = urlParams.get('mode') || 'experiment';
+                const urlSessionNum = urlParams.get('sessionNumber') || '1';
+
+                if (urlPid) setParticipantId(urlPid);
+                if (urlCondition) setCondition(urlCondition);
+                if (urlPaper) setCurrentPaper(urlPaper);
+                setMode(urlMode);
+                setSessionNumber(parseInt(urlSessionNum));
+
+                // If experiment mode, load session order from Firebase
+                if (urlMode === 'experiment' && urlPid) {
+                    const loadSessionOrder = async () => {
+                        try {
+                            const userDoc = await window.firebaseDb
+                                .collection('users')
+                                .doc(urlPid)
+                                .get();
+
+                            if (userDoc.exists) {
+                                const data = userDoc.data();
+                                if (data.sessionOrder) {
+                                    setSessionOrder(data.sessionOrder);
+                                    console.log('✅ Loaded session order:', data.sessionOrder);
+                                }
+                            }
+                        } catch (error) {
+                            console.error('❌ Failed to load session order:', error);
+                        }
+                    };
+                    loadSessionOrder();
+                }
+
+                // Auto-start if all parameters are provided
+                if (urlPid && urlCondition && urlPaper) {
+                    console.log(`🚀 Auto-starting: mode=${urlMode}, session=${urlSessionNum}, condition=${urlCondition}`);
+                    // Wait a bit for Firebase to load session order if needed
+                    setTimeout(() => {
+                        // Trigger experiment start directly by setting phase
+                        const paper = papers.find(p => p.id === urlPaper);
+                        if (paper && paper.url) {
+                            fetch(paper.url)
+                                .then(response => response.text())
+                                .then(html => {
+                                    const parser = new DOMParser();
+                                    const doc = parser.parseFromString(html, 'text/html');
+                                    const proseContent = doc.querySelector('.ltx_page_content')?.textContent || '';
+                                    setPaperContent(proseContent);
+                                    setPhase('reading');
+                                    setReadingActive(true);
+                                    logEvent('reading_started');
+                                })
+                                .catch(error => {
+                                    console.error('Error loading paper:', error);
+                                    alert('Failed to load paper. Please try again.');
+                                });
+                        }
+                    }, 500); // Wait for Firebase data to load
+                }
+            }, []);
 
             // Log event
             const logEvent = async (eventType, additionalData = {}) => {
@@ -1582,36 +1653,73 @@
 
             // COMPLETE PHASE
             if (phase === 'complete') {
+                // Handle experiment mode: transition to next session or post-survey
+                const handleComplete = () => {
+                    if (mode === 'experiment') {
+                        if (sessionNumber === 1) {
+                            // Move to session 2
+                            const nextCondition = sessionOrder[1];
+                            const params = new URLSearchParams({
+                                participantId,
+                                mode: 'experiment',
+                                condition: nextCondition,
+                                paper: currentPaper,
+                                sessionNumber: '2'
+                            });
+                            window.location.href = `index.html?${params.toString()}`;
+                        } else {
+                            // Go to post-survey
+                            window.location.href = `post-survey.html?participantId=${encodeURIComponent(participantId)}`;
+                        }
+                    } else {
+                        // Test mode: just export data
+                        exportData();
+                    }
+                };
+
                 return (
                     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-xl shadow-2xl p-12 max-w-2xl w-full text-center">
                             <div className="text-6xl mb-6">🎉</div>
-                            <h1 className="text-4xl font-bold text-gray-800 mb-4">Experiment Complete!</h1>
+                            <h1 className="text-4xl font-bold text-gray-800 mb-4">
+                                {mode === 'experiment' && sessionNumber === 1 ? '1차 세션 완료!' : '실험 완료!'}
+                            </h1>
                             <p className="text-xl text-gray-600 mb-8">
-                                Thank you for participating in this study.
+                                {mode === 'experiment' && sessionNumber === 1
+                                    ? '1차 세션이 완료되었습니다. 잠시 쉬었다가 2차 세션을 시작하세요.'
+                                    : '연구에 참여해주셔서 감사합니다.'}
                             </p>
 
                             <div className="bg-gray-50 rounded-lg p-6 mb-8 text-left">
-                                <h3 className="font-bold text-lg mb-4">Summary</h3>
+                                <h3 className="font-bold text-lg mb-4">요약</h3>
                                 <div className="space-y-2 text-gray-700">
-                                    <p>• Participant: <strong>{participantId}</strong></p>
-                                    <p>• Condition: <strong>{condition === 'with_llm' ? 'With LLM' : 'Without LLM'}</strong></p>
-                                    <p>• Paper: <strong>{papers.find(p => p.id === currentPaper)?.name}</strong></p>
-                                    <p>• Quiz Answers: <strong>{Object.keys(quizAnswers).length} / {quizQuestions.length}</strong></p>
-                                    <p>• Review Rating: <strong>{reviewData.rating} / 5</strong></p>
-                                    <p>• Total Events Logged: <strong>{events.length}</strong></p>
+                                    <p>• 참여자: <strong>{participantId}</strong></p>
+                                    {mode === 'experiment' && <p>• 세션: <strong>{sessionNumber} / 2</strong></p>}
+                                    <p>• 조건: <strong>{condition === 'with_llm' ? 'AI 지원 O' : 'AI 지원 X'}</strong></p>
+                                    <p>• 논문: <strong>{papers.find(p => p.id === currentPaper)?.name}</strong></p>
+                                    <p>• 퀴즈 응답: <strong>{Object.keys(quizAnswers).length} / {quizQuestions.length}</strong></p>
+                                    <p>• 리뷰 평점: <strong>{reviewData.rating} / 5</strong></p>
+                                    <p>• 로그 이벤트: <strong>{events.length}</strong></p>
                                 </div>
                             </div>
 
+                            {mode === 'experiment' && sessionNumber === 1 && (
+                                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                                    <p className="text-sm text-blue-800">
+                                        <strong>다음:</strong> 2차 세션 ({sessionOrder[1] === 'with_llm' ? 'AI 지원 O' : 'AI 지원 X'})
+                                    </p>
+                                </div>
+                            )}
+
                             <button
-                                onClick={exportData}
+                                onClick={handleComplete}
                                 className="px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-lg font-medium"
                             >
-                                Download Experiment Data
+                                {mode === 'experiment' && sessionNumber === 1 ? '2차 세션 시작 →' : mode === 'experiment' ? '사후 설문 시작 →' : '데이터 다운로드'}
                             </button>
 
                             <p className="mt-6 text-sm text-gray-500">
-                                Your data has been saved. Please contact the researcher if you have any questions.
+                                데이터가 안전하게 저장되었습니다.
                             </p>
                         </div>
                     </div>

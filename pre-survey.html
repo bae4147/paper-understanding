@@ -36,13 +36,28 @@
             const [participantId, setParticipantId] = useState('');
             const [condition, setCondition] = useState('without_llm');
             const [currentPaper, setCurrentPaper] = useState('');
-            
-            // Get PID from URL if available
+            const [mode, setMode] = useState('experiment'); // 'experiment' or 'test'
+            const [sessionOrder, setSessionOrder] = useState([]); // For experiment mode: randomized order
+
+            // Get parameters from URL
             useEffect(() => {
                 const urlParams = new URLSearchParams(window.location.search);
                 const urlPid = urlParams.get('participantId');
+                const urlMode = urlParams.get('mode') || 'experiment';
+
                 if (urlPid) {
                     setParticipantId(urlPid);
+                }
+                setMode(urlMode);
+
+                // If experiment mode, randomize session order
+                if (urlMode === 'experiment') {
+                    // Randomize: ['with_llm', 'without_llm'] or ['without_llm', 'with_llm']
+                    const order = Math.random() < 0.5
+                        ? ['with_llm', 'without_llm']
+                        : ['without_llm', 'with_llm'];
+                    setSessionOrder(order);
+                    console.log('🎲 Randomized session order:', order);
                 }
             }, []);
             
@@ -110,8 +125,10 @@
 
                 const surveyData = {
                     participantId,
-                    condition,
+                    condition: mode === 'experiment' ? 'experiment_mode' : condition,
                     paper: currentPaper,
+                    mode,
+                    sessionOrder: mode === 'experiment' ? sessionOrder : null,
                     demographics: {
                         gender,
                         age: parseInt(age),
@@ -138,8 +155,10 @@
                     const docRef = db.collection('users').doc(participantId);
                     await docRef.set({
                         participantId,
-                        condition,
+                        condition: mode === 'experiment' ? 'experiment_mode' : condition,
                         paper: currentPaper,
+                        mode,
+                        sessionOrder: mode === 'experiment' ? sessionOrder : null,
                         preSurvey: surveyData,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
@@ -147,12 +166,26 @@
                     console.log('✅ Pre-survey saved');
 
                     // Navigate to experiment
-                    const params = new URLSearchParams({
-                        participantId,
-                        condition,
-                        paper: currentPaper
-                    });
-                    window.location.href = `index.html?${params.toString()}`;
+                    if (mode === 'experiment') {
+                        // Start with first session
+                        const params = new URLSearchParams({
+                            participantId,
+                            mode: 'experiment',
+                            condition: sessionOrder[0],
+                            paper: currentPaper,
+                            sessionNumber: '1'
+                        });
+                        window.location.href = `index.html?${params.toString()}`;
+                    } else {
+                        // Test mode: use selected condition
+                        const params = new URLSearchParams({
+                            participantId,
+                            mode: 'test',
+                            condition,
+                            paper: currentPaper
+                        });
+                        window.location.href = `index.html?${params.toString()}`;
+                    }
                 } catch (error) {
                     console.error('Error saving survey:', error);
                     alert('Failed to save survey. Please try again.');
@@ -189,6 +222,15 @@
                                             />
                                         </div>
 
+                                        {mode === 'experiment' && (
+                                            <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
+                                                <p className="text-sm text-blue-800">
+                                                    <strong>실험 모드:</strong> 두 세션이 자동으로 배정됩니다 (순서: {sessionOrder.map(c => c === 'with_llm' ? 'AI 지원 O' : 'AI 지원 X').join(' → ')})
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {mode === 'test' && (
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Condition *
@@ -203,6 +245,7 @@
                                                 <option value="with_llm">With LLM (Experimental)</option>
                                             </select>
                                         </div>
+                                        )}
 
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
