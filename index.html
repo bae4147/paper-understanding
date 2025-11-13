@@ -268,8 +268,15 @@
                                 .then(html => {
                                     const parser = new DOMParser();
                                     const doc = parser.parseFromString(html, 'text/html');
-                                    const proseContent = doc.querySelector('.ltx_page_content')?.textContent || '';
-                                    setPaperContent(proseContent);
+                                    const proseDiv = doc.querySelector('.prose');
+
+                                    if (proseDiv) {
+                                        setPaperContent(proseDiv.innerHTML);
+                                    } else {
+                                        console.error('Could not find .prose element in paper HTML');
+                                        setPaperContent('<p>Error: Could not load paper content</p>');
+                                    }
+
                                     setPhase('reading');
                                     setReadingActive(true);
                                     logEvent('reading_started');
@@ -278,6 +285,8 @@
                                     console.error('Error loading paper:', error);
                                     alert('Failed to load paper. Please try again.');
                                 });
+                        } else {
+                            console.error('Paper not found:', urlPaper);
                         }
                     }, 500); // Wait for Firebase data to load
                 }
