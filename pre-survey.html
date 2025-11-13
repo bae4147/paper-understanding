@@ -104,10 +104,10 @@
                         setLlmPurposeRatings(newRatings);
                         return prev.filter(p => p !== purpose);
                     } else {
-                        // Add purpose with default ratings
+                        // Add purpose with no default ratings
                         setLlmPurposeRatings(prev => ({
                             ...prev,
-                            [purpose]: { trust: '3', usefulness: '3' }
+                            [purpose]: { trust: '', usefulness: '' }
                         }));
                         return [...prev, purpose];
                     }
@@ -238,7 +238,7 @@
                                         {mode === 'experiment' && (
                                             <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
                                                 <p className="text-sm text-blue-800">
-                                                    <strong>실험 모드:</strong> 두 세션이 자동으로 배정됩니다 (순서: {sessionOrder.map(c => c === 'with_llm' ? 'AI 지원 O' : 'AI 지원 X').join(' → ')})
+                                                    <strong>실험 모드:</strong> 두 세션이 자동으로 배정됩니다 (순서: {sessionOrder.map(c => c === 'with_llm' ? 'AI와 함께 읽기' : 'AI 없이 읽기').join(' → ')})
                                                 </p>
                                             </div>
                                         )}

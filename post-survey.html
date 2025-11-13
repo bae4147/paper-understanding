@@ -40,15 +40,15 @@
             const sessionId = urlParams.get('sessionId');
 
             // Task Experience
-            const [taskDifficulty, setTaskDifficulty] = useState('3');
-            const [taskEngagement, setTaskEngagement] = useState('3');
-            const [taskConfidence, setTaskConfidence] = useState('3');
-            const [taskSatisfaction, setTaskSatisfaction] = useState('3');
-            
+            const [taskDifficulty, setTaskDifficulty] = useState('');
+            const [taskEngagement, setTaskEngagement] = useState('');
+            const [taskConfidence, setTaskConfidence] = useState('');
+            const [taskSatisfaction, setTaskSatisfaction] = useState('');
+
             // LLM Usage (only for with_llm condition)
-            const [llmHelpfulness, setLlmHelpfulness] = useState('3');
-            const [llmTrust, setLlmTrust] = useState('3');
-            const [llmInfluence, setLlmInfluence] = useState('3');
+            const [llmHelpfulness, setLlmHelpfulness] = useState('');
+            const [llmTrust, setLlmTrust] = useState('');
+            const [llmInfluence, setLlmInfluence] = useState('');
             const [llmAdvantages, setLlmAdvantages] = useState('');
             const [llmDisadvantages, setLlmDisadvantages] = useState('');
             
