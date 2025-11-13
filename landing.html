@@ -22,12 +22,12 @@
 
             const handleBegin = () => {
                 if (!participantId.trim()) {
-                    alert('Please enter a Participant ID');
+                    alert('참여자 ID를 입력해주세요');
                     return;
                 }
-                
+
                 if (!hasConsented) {
-                    alert('Please read and agree to the consent form');
+                    alert('동의서를 읽고 동의해주세요');
                     return;
                 }
 
@@ -42,25 +42,25 @@
                         <div className="max-w-4xl mx-auto px-6 py-3">
                             <div className="flex items-center justify-between text-sm">
                                 <div className={`flex-1 text-center ${currentStep >= 0 ? 'text-blue-600 font-semibold' : 'text-gray-400'}`}>
-                                    Welcome
+                                    환영합니다
                                 </div>
                                 <div className="w-12 h-1 bg-gray-300 mx-2">
                                     <div className={`h-full bg-blue-600 transition-all ${currentStep >= 1 ? 'w-full' : 'w-0'}`}></div>
                                 </div>
                                 <div className={`flex-1 text-center ${currentStep >= 1 ? 'text-blue-600 font-semibold' : 'text-gray-400'}`}>
-                                    Study Info
+                                    연구 정보
                                 </div>
                                 <div className="w-12 h-1 bg-gray-300 mx-2">
                                     <div className={`h-full bg-blue-600 transition-all ${currentStep >= 2 ? 'w-full' : 'w-0'}`}></div>
                                 </div>
                                 <div className={`flex-1 text-center ${currentStep >= 2 ? 'text-blue-600 font-semibold' : 'text-gray-400'}`}>
-                                    Consent
+                                    동의서
                                 </div>
                                 <div className="w-12 h-1 bg-gray-300 mx-2">
                                     <div className={`h-full bg-blue-600 transition-all ${currentStep >= 3 ? 'w-full' : 'w-0'}`}></div>
                                 </div>
                                 <div className={`flex-1 text-center ${currentStep >= 3 ? 'text-blue-600 font-semibold' : 'text-gray-400'}`}>
-                                    Start
+                                    시작
                                 </div>
                             </div>
                         </div>
@@ -72,19 +72,19 @@
                             <div className="bg-white rounded-2xl shadow-2xl p-12 text-center">
                                 <div className="text-6xl mb-6">📚</div>
                                 <h1 className="text-4xl font-bold text-gray-800 mb-4">
-                                    Welcome to the Academic Paper Reading Study
+                                    학술 논문 읽기 실험에 오신 것을 환영합니다
                                 </h1>
                                 <p className="text-xl text-gray-600 mb-8">
-                                    Thank you for your interest in participating in our research!
+                                    참여해주셔서 감사합니다 :)
                                 </p>
                                 
                                 <div className="bg-blue-50 border-l-4 border-blue-500 p-6 mb-8 text-left">
-                                    <h3 className="font-bold text-lg mb-3">What to Expect:</h3>
+                                    <h3 className="font-bold text-lg mb-3">실험 진행:</h3>
                                     <ul className="space-y-2 text-gray-700">
-                                        <li>✓ <strong>Duration:</strong> Approximately 90 minutes</li>
-                                        <li>✓ <strong>Tasks:</strong> Reading, comprehension quiz, and peer review</li>
-                                        <li>✓ <strong>Location:</strong> Online (complete at your own pace)</li>
-                                        <li>✓ <strong>Compensation:</strong> [To be specified]</li>
+                                        <li>✓ <strong>예상 소요시간:</strong> 약 2시간</li>
+                                        <li>✓ <strong>세션 정보:</strong> 논문 읽기(30분) - 퀴즈(15분) - 리뷰작성(20분)</li>
+                                        // <li>✓ <strong>Location:</strong> Online (complete at your own pace)</li>
+                                        // <li>✓ <strong>Compensation:</strong> [To be specified]</li>
                                     </ul>
                                 </div>
 
@@ -92,7 +92,7 @@
                                     onClick={() => setCurrentStep(1)}
                                     className="px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-lg font-medium transition-colors"
                                 >
-                                    Continue →
+                                    계속하기 →
                                 </button>
                             </div>
                         )}
@@ -100,50 +100,47 @@
                         {/* Step 1: Study Information */}
                         {currentStep === 1 && (
                             <div className="bg-white rounded-2xl shadow-2xl p-10">
-                                <h2 className="text-3xl font-bold text-gray-800 mb-6">Study Information</h2>
+                                <h2 className="text-3xl font-bold text-gray-800 mb-6">실험 정보</h2>
                                 
                                 <div className="space-y-6 text-gray-700">
                                     <div>
-                                        <h3 className="text-xl font-semibold mb-3">Purpose</h3>
+                                        <h3 className="text-xl font-semibold mb-3">목적</h3>
                                         <p>
-                                            This study investigates how AI assistants (Large Language Models) affect 
-                                            academic paper reading comprehension and critical evaluation among researchers.
+                                            본 연구는 AI 어시스턴트(대규모 언어 모델)가 연구자들의 학술 논문 읽기 이해도 및 비판적 평가에 어떤 영향을 미치는지 조사합니다.
                                         </p>
                                     </div>
 
                                     <div>
-                                        <h3 className="text-xl font-semibold mb-3">Procedures</h3>
+                                        <h3 className="text-xl font-semibold mb-3">절차</h3>
                                         <ol className="list-decimal list-inside space-y-2 ml-4">
-                                            <li><strong>Pre-Task Survey</strong> (5 min): Background and experience questionnaire</li>
-                                            <li><strong>Reading Phase</strong> (30 min): Read an academic paper with/without AI assistance</li>
-                                            <li><strong>Comprehension Quiz</strong> (15 min): Closed-book questions about the paper</li>
-                                            <li><strong>Peer Review</strong> (30 min): Write a structured review of the paper</li>
-                                            <li><strong>Post-Task Survey</strong> (10 min): Experience and feedback questionnaire</li>
+                                            <li><strong>사전 설문</strong> (5분): 배경 및 경험에 관한 설문지</li>
+                                            <li><strong>논문 읽기</strong> (30분): AI 지원 유무에 따라 학술 논문 읽기</li>
+                                            <li><strong>이해도 퀴즈</strong> (15분): 논문에 대한 객관식 문제</li>
+                                            <li><strong>피어 리뷰</strong> (30분): 논문에 대한 구조화된 리뷰 작성</li>
+                                            <li><strong>사후 설문</strong> (10분): 경험 및 피드백 설문지</li>
                                         </ol>
                                     </div>
 
                                     <div>
-                                        <h3 className="text-xl font-semibold mb-3">Data Collection</h3>
+                                        <h3 className="text-xl font-semibold mb-3">데이터 수집</h3>
                                         <p>
-                                            We will collect behavioral data including reading patterns (scroll events, time spent), 
-                                            AI interaction logs (if applicable), quiz responses, and written reviews. 
-                                            All data will be anonymized and used solely for research purposes.
+                                            읽기 패턴(스크롤 이벤트, 소요 시간), AI 상호작용 로그(해당되는 경우), 퀴즈 응답, 작성된 리뷰를 포함한 행동 데이터를 수집합니다.
+                                            모든 데이터는 익명화되며 연구 목적으로만 사용됩니다.
                                         </p>
                                     </div>
 
                                     <div>
-                                        <h3 className="text-xl font-semibold mb-3">Risks & Benefits</h3>
+                                        <h3 className="text-xl font-semibold mb-3">위험성 및 이점</h3>
                                         <p>
-                                            <strong>Risks:</strong> Minimal. You may experience mild eye strain or fatigue from reading.<br/>
-                                            <strong>Benefits:</strong> You will gain experience with academic paper analysis and contribute to 
-                                            research on AI-assisted learning.
+                                            <strong>위험성:</strong> 최소한입니다. 읽기로 인한 경미한 눈의 피로나 피곤함을 경험할 수 있습니다.<br/>
+                                            <strong>이점:</strong> 학술 논문 분석 경험을 얻고 AI 지원 학습에 대한 연구에 기여하게 됩니다.
                                         </p>
                                     </div>
 
                                     <div>
-                                        <h3 className="text-xl font-semibold mb-3">Voluntary Participation</h3>
+                                        <h3 className="text-xl font-semibold mb-3">자발적 참여</h3>
                                         <p>
-                                            Your participation is completely voluntary. You may withdraw at any time without penalty.
+                                            귀하의 참여는 완전히 자발적입니다. 언제든지 불이익 없이 참여를 철회할 수 있습니다.
                                         </p>
                                     </div>
                                 </div>
@@ -153,13 +150,13 @@
                                         onClick={() => setCurrentStep(0)}
                                         className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
                                     >
-                                        ← Back
+                                        ← 이전
                                     </button>
                                     <button
                                         onClick={() => setCurrentStep(2)}
                                         className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
                                     >
-                                        Continue →
+                                        계속하기 →
                                     </button>
                                 </div>
                             </div>
@@ -168,111 +165,103 @@
                         {/* Step 2: Consent Form */}
                         {currentStep === 2 && (
                             <div className="bg-white rounded-2xl shadow-2xl p-10">
-                                <h2 className="text-3xl font-bold text-gray-800 mb-6">Informed Consent</h2>
+                                <h2 className="text-3xl font-bold text-gray-800 mb-6">연구 참여 동의서</h2>
                                 
                                 <div className="bg-gray-50 border border-gray-300 rounded-lg p-6 max-h-96 overflow-y-auto mb-6">
                                     <div className="space-y-4 text-sm text-gray-700">
-                                        <p className="font-semibold">CONSENT TO PARTICIPATE IN RESEARCH</p>
-                                        
+                                        <p className="font-semibold">연구 참여 동의서</p>
+
                                         <p>
-                                            <strong>Study Title:</strong> Understanding the Impact of Large Language Models on 
-                                            Academic Paper Reading Comprehension
+                                            <strong>연구 제목:</strong> 대규모 언어 모델이 학술 논문 읽기 이해도에 미치는 영향에 대한 이해
                                         </p>
-                                        
+
                                         <p>
-                                            <strong>Principal Investigator:</strong> [Your Name]<br/>
-                                            <strong>Institution:</strong> Seoul National University<br/>
-                                            <strong>Contact:</strong> [Your Email]
+                                            <strong>연구 책임자:</strong> [Your Name]<br/>
+                                            <strong>소속 기관:</strong> 서울대학교<br/>
+                                            <strong>연락처:</strong> [Your Email]
                                         </p>
 
                                         <div>
-                                            <p className="font-semibold mb-2">You are being asked to participate in a research study.</p>
+                                            <p className="font-semibold mb-2">귀하는 연구 참여를 요청받고 있습니다.</p>
                                             <p>
-                                                Before you agree, the researcher will explain the study to you through this 
-                                                information sheet. You should feel free to ask questions if there is anything 
-                                                you do not understand.
+                                                동의하기 전에, 연구자가 본 정보 문서를 통해 연구에 대해 설명할 것입니다.
+                                                이해되지 않는 부분이 있다면 자유롭게 질문하시기 바랍니다.
                                             </p>
                                         </div>
 
                                         <div>
-                                            <p className="font-semibold mb-2">Purpose of the Study</p>
+                                            <p className="font-semibold mb-2">연구 목적</p>
                                             <p>
-                                                The purpose of this study is to investigate how AI language models affect 
-                                                researchers' ability to comprehend and critically evaluate academic papers.
+                                                본 연구의 목적은 AI 언어 모델이 연구자들의 학술 논문 이해 및 비판적 평가 능력에 어떤 영향을 미치는지 조사하는 것입니다.
                                             </p>
                                         </div>
 
                                         <div>
-                                            <p className="font-semibold mb-2">Study Procedures</p>
+                                            <p className="font-semibold mb-2">연구 절차</p>
                                             <p>
-                                                If you agree to participate, you will be asked to:
+                                                참여에 동의하시면, 다음을 수행하도록 요청받게 됩니다:
                                             </p>
                                             <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
-                                                <li>Complete a pre-task questionnaire about your background and experience</li>
-                                                <li>Read an academic paper (with or without AI assistance, randomly assigned)</li>
-                                                <li>Complete a comprehension quiz about the paper</li>
-                                                <li>Write a structured peer review of the paper</li>
-                                                <li>Complete a post-task questionnaire about your experience</li>
+                                                <li>배경 및 경험에 관한 사전 설문지 작성</li>
+                                                <li>학술 논문 읽기 (AI 지원 유무는 무작위 배정됨)</li>
+                                                <li>논문에 관한 이해도 퀴즈 완료</li>
+                                                <li>논문에 대한 구조화된 피어 리뷰 작성</li>
+                                                <li>경험에 관한 사후 설문지 작성</li>
                                             </ul>
                                             <p className="mt-2">
-                                                The entire study will take approximately 90 minutes. Your reading patterns, 
-                                                AI interactions (if applicable), and responses will be recorded automatically.
+                                                전체 연구는 약 90분이 소요됩니다. 읽기 패턴, AI 상호작용(해당되는 경우), 응답이 자동으로 기록됩니다.
                                             </p>
                                         </div>
 
                                         <div>
-                                            <p className="font-semibold mb-2">Risks and Discomforts</p>
+                                            <p className="font-semibold mb-2">위험 및 불편함</p>
                                             <p>
-                                                The risks associated with this study are minimal. You may experience mild 
-                                                eye strain or mental fatigue from extended reading. You may take breaks as needed.
+                                                본 연구와 관련된 위험은 최소한입니다. 장시간 읽기로 인해 경미한 눈의 피로나 정신적 피로를 경험할 수 있습니다.
+                                                필요시 휴식을 취할 수 있습니다.
                                             </p>
                                         </div>
 
                                         <div>
-                                            <p className="font-semibold mb-2">Benefits</p>
+                                            <p className="font-semibold mb-2">이점</p>
                                             <p>
-                                                You may not receive any direct benefits from participating in this study. 
-                                                However, your participation will contribute to understanding how AI tools 
-                                                can be designed to better support academic research activities.
+                                                본 연구 참여로 인한 직접적인 이점은 없을 수 있습니다.
+                                                그러나 귀하의 참여는 AI 도구가 학술 연구 활동을 더 잘 지원하도록 설계되는 방법을 이해하는 데 기여하게 됩니다.
                                             </p>
                                         </div>
 
                                         <div>
-                                            <p className="font-semibold mb-2">Confidentiality</p>
+                                            <p className="font-semibold mb-2">기밀 유지</p>
                                             <p>
-                                                Your participation in this study will remain confidential. All data will be 
-                                                stored securely and only the research team will have access to it. Your 
-                                                participant ID will be used instead of your name, and any published results 
-                                                will not identify you personally.
+                                                본 연구에 대한 귀하의 참여는 기밀로 유지됩니다. 모든 데이터는 안전하게 저장되며 연구팀만 접근할 수 있습니다.
+                                                귀하의 이름 대신 참여자 ID가 사용되며, 발표되는 결과에서 귀하를 개인적으로 식별할 수 없습니다.
                                             </p>
                                         </div>
 
                                         <div>
-                                            <p className="font-semibold mb-2">Voluntary Participation</p>
+                                            <p className="font-semibold mb-2">자발적 참여</p>
                                             <p>
-                                                Your participation in this study is completely voluntary. You may refuse to 
-                                                participate or withdraw from the study at any time without penalty. If you 
-                                                withdraw, your data will be deleted unless you specify otherwise.
+                                                본 연구에 대한 귀하의 참여는 완전히 자발적입니다. 언제든지 불이익 없이 참여를 거부하거나
+                                                철회할 수 있습니다. 철회하는 경우, 별도로 명시하지 않는 한 귀하의 데이터는 삭제됩니다.
                                             </p>
                                         </div>
 
                                         <div>
-                                            <p className="font-semibold mb-2">Questions</p>
+                                            <p className="font-semibold mb-2">문의사항</p>
                                             <p>
-                                                If you have any questions about this study, please contact:<br/>
-                                                [Your Name] at [Your Email]
+                                                본 연구에 대해 질문이 있으시면 다음으로 연락하시기 바랍니다:<br/>
+                                                [Your Name] - [Your Email]
                                             </p>
                                         </div>
 
                                         <div className="border-t border-gray-300 pt-4 mt-6">
-                                            <p className="font-semibold mb-2">Statement of Consent</p>
+                                            <p className="font-semibold mb-2">동의 진술</p>
                                             <p>
-                                                By checking the box below and clicking "I Agree", you indicate that:
+                                                아래 체크박스를 선택하고 "동의합니다"를 클릭함으로써, 귀하는 다음을 확인합니다:
                                             </p>
                                             <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
-                                                <li>You have read and understood the information above</li>
-                                                <li>You voluntarily agree to participate in this study</li>
-                                                <li>You are at least 18 years old</li>
+                                                <li>위의 정보를 읽고 이해했습니다</li>
+                                                <li>본 연구에 자발적으로 참여하는 데 동의합니다</li>
+                                                <li>만 18세 이상입니다</li>
                                             </ul>
                                         </div>
                                     </div>
@@ -287,8 +276,8 @@
                                             className="w-5 h-5 mt-1 flex-shrink-0"
                                         />
                                         <span className="text-sm">
-                                            <strong>I have read the consent form and agree to participate in this study.</strong>
-                                            {' '}I understand that my participation is voluntary and that I may withdraw at any time.
+                                            <strong>동의서를 읽었으며 본 연구에 참여하는 데 동의합니다.</strong>
+                                            {' '}제 참여가 자발적이며 언제든지 철회할 수 있음을 이해합니다.
                                         </span>
                                     </label>
                                 </div>
@@ -298,14 +287,14 @@
                                         onClick={() => setCurrentStep(1)}
                                         className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
                                     >
-                                        ← Back
+                                        ← 이전
                                     </button>
                                     <button
                                         onClick={() => setCurrentStep(3)}
                                         disabled={!hasConsented}
                                         className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium transition-colors"
                                     >
-                                        Continue →
+                                        계속하기 →
                                     </button>
                                 </div>
                             </div>
@@ -315,36 +304,36 @@
                         {currentStep === 3 && (
                             <div className="bg-white rounded-2xl shadow-2xl p-12 text-center">
                                 <div className="text-5xl mb-6">✅</div>
-                                <h2 className="text-3xl font-bold text-gray-800 mb-4">Ready to Begin!</h2>
+                                <h2 className="text-3xl font-bold text-gray-800 mb-4">시작 준비 완료!</h2>
                                 <p className="text-gray-600 mb-8">
-                                    Please enter your Participant ID to continue.
+                                    계속하려면 참여자 ID를 입력하세요.
                                 </p>
 
                                 <div className="max-w-md mx-auto mb-8">
                                     <label className="block text-left text-sm font-medium text-gray-700 mb-2">
-                                        Participant ID *
+                                        참여자 ID *
                                     </label>
                                     <input
                                         type="text"
                                         value={participantId}
                                         onChange={(e) => setParticipantId(e.target.value)}
-                                        placeholder="e.g., P001"
+                                        placeholder="예: P001"
                                         className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         autoFocus
                                     />
                                     <p className="text-sm text-gray-500 mt-2">
-                                        This ID will be provided by the researcher.
+                                        이 ID는 연구자가 제공합니다.
                                     </p>
                                 </div>
 
                                 <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-8 text-left max-w-md mx-auto">
                                     <p className="text-sm text-gray-700">
-                                        <strong>Important:</strong> Please ensure you have:
+                                        <strong>중요:</strong> 다음 사항을 확인하세요:
                                     </p>
                                     <ul className="list-disc list-inside ml-4 mt-2 text-sm text-gray-700 space-y-1">
-                                        <li>A stable internet connection</li>
-                                        <li>Approximately 90 minutes of uninterrupted time</li>
-                                        <li>A quiet environment for focused reading</li>
+                                        <li>안정적인 인터넷 연결</li>
+                                        <li>약 90분의 중단 없는 시간</li>
+                                        <li>집중해서 읽을 수 있는 조용한 환경</li>
                                     </ul>
                                 </div>
 
@@ -353,14 +342,14 @@
                                         onClick={() => setCurrentStep(2)}
                                         className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
                                     >
-                                        ← Back
+                                        ← 이전
                                     </button>
                                     <button
                                         onClick={handleBegin}
                                         disabled={!participantId.trim()}
                                         className="flex-1 px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium text-lg transition-colors"
                                     >
-                                        Begin Study →
+                                        실험 시작 →
                                     </button>
                                 </div>
                             </div>
@@ -369,8 +358,8 @@
 
                     {/* Footer */}
                     <div className="max-w-4xl mx-auto px-6 pb-8 text-center text-sm text-gray-500">
-                        <p>Seoul National University | Graduate School of Data Science</p>
-                        <p className="mt-2">If you have questions, please contact: [Your Email]</p>
+                        <p>서울대학교 | 데이터사이언스 대학원</p>
+                        <p className="mt-2">문의사항이 있으시면 연락주세요: sh.bae@snu.ac.kr</p>
                     </div>
                 </div>
             );
