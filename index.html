@@ -1764,8 +1764,8 @@
                                 <p className="text-sm text-gray-600">Open-book | Write a comprehensive review</p>
                             </div>
                             <div className="flex items-center space-x-4">
-                                <Timer 
-                                    seconds={30 * 60} 
+                                <Timer
+                                    seconds={20 * 60}
                                     isActive={reviewActive}
                                     phase="review"
                                     onComplete={() => alert('Review time is up!')}
@@ -1784,11 +1784,10 @@
                                 {/* Paper (for reference) */}
                                 <div className="bg-white rounded-lg shadow-md p-6 max-h-[80vh] overflow-y-auto">
                                     <h3 className="text-xl font-bold mb-4">Paper (Reference)</h3>
-                                    <div className="prose">
-                                        <h2>Sample Academic Paper</h2>
-                                        <p>This is the paper content for reference during review writing...</p>
-                                        {/* Same paper content as reading phase */}
-                                    </div>
+                                    <div
+                                        className="prose max-w-none"
+                                        dangerouslySetInnerHTML={{ __html: paperContent }}
+                                    />
                                 </div>
 
                                 {/* Review Form */}
