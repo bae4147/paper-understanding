@@ -149,23 +149,28 @@
                             {/* Header */}
                             <div className="text-center mb-8">
                                 <div className="text-5xl mb-4">🎉</div>
-                                <h1 className="text-3xl font-bold text-gray-800 mb-2">Post-Task Survey</h1>
-                                <p className="text-gray-600">Thank you for completing the experiment!</p>
-                                <p className="text-sm text-gray-500 mt-2">Participant: {participantId} | Condition: {condition}</p>
+                                <h1 className="text-3xl font-bold text-gray-800 mb-2">사후 설문</h1>
+                                <p className="text-gray-600">실험에 참여해주셔서 감사합니다!</p>
+                                <p className="text-sm text-gray-500 mt-2">참가자: {participantId} | 조건: {condition === 'with_llm' ? 'AI 지원 O' : 'AI 지원 X'}</p>
                             </div>
 
                             <form onSubmit={handleSubmit} className="space-y-8">
-                                {/* Task Experience */}
+                                {/* Section A: Cognitive Load */}
                                 <div className="border-b pb-6">
-                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Task Experience</h2>
-                                    
+                                    <h2 className="text-xl font-bold text-gray-800 mb-2">Section A. 인지 부하 (Cognitive Load)</h2>
+                                    <p className="text-sm text-gray-600 mb-4">논문을 읽는 과정에서 느낀 난이도, 집중도, 부담감 등을 평가합니다.</p>
+
+                                    <div className="bg-blue-50 border-l-4 border-blue-500 p-3 mb-4 text-xs text-gray-700">
+                                        <strong>척도:</strong> 1 = 전혀 그렇지 않다 | 2 = 그렇지 않은 편이다 | 3 = 보통이다 | 4 = 그렇다 | 5 = 매우 그렇다
+                                    </div>
+
                                     <div className="space-y-6">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-3">
-                                                How difficult was the reading task?
+                                                1. LLM을 사용할 때 논문을 이해하는 것이 더 쉬웠다.
                                             </label>
                                             <div className="flex items-center justify-between">
-                                                <span className="text-xs text-gray-500">Very Easy</span>
+                                                <span className="text-xs text-gray-500">전혀 그렇지 않다</span>
                                                 <div className="flex space-x-2">
                                                     {[1, 2, 3, 4, 5].map(value => (
                                                         <button
@@ -182,16 +187,16 @@
                                                         </button>
                                                     ))}
                                                 </div>
-                                                <span className="text-xs text-gray-500">Very Difficult</span>
+                                                <span className="text-xs text-gray-500">매우 그렇다</span>
                                             </div>
                                         </div>
 
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-3">
-                                                How engaged were you during the task?
+                                                2. LLM이 복잡한 개념이나 문장을 해석하는 데 도움이 되었다.
                                             </label>
                                             <div className="flex items-center justify-between">
-                                                <span className="text-xs text-gray-500">Not Engaged</span>
+                                                <span className="text-xs text-gray-500">전혀 그렇지 않다</span>
                                                 <div className="flex space-x-2">
                                                     {[1, 2, 3, 4, 5].map(value => (
                                                         <button
@@ -208,16 +213,16 @@
                                                         </button>
                                                     ))}
                                                 </div>
-                                                <span className="text-xs text-gray-500">Very Engaged</span>
+                                                <span className="text-xs text-gray-500">매우 그렇다</span>
                                             </div>
                                         </div>
 
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-3">
-                                                How confident are you in your understanding of the paper?
+                                                3. LLM 없이 읽을 때는 집중을 유지하기 더 어려웠다.
                                             </label>
                                             <div className="flex items-center justify-between">
-                                                <span className="text-xs text-gray-500">Not Confident</span>
+                                                <span className="text-xs text-gray-500">전혀 그렇지 않다</span>
                                                 <div className="flex space-x-2">
                                                     {[1, 2, 3, 4, 5].map(value => (
                                                         <button
@@ -234,16 +239,16 @@
                                                         </button>
                                                     ))}
                                                 </div>
-                                                <span className="text-xs text-gray-500">Very Confident</span>
+                                                <span className="text-xs text-gray-500">매우 그렇다</span>
                                             </div>
                                         </div>
 
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-3">
-                                                How satisfied are you with your performance?
+                                                4. LLM을 사용했을 때 정보량이 많아도 부담이 적었다.
                                             </label>
                                             <div className="flex items-center justify-between">
-                                                <span className="text-xs text-gray-500">Not Satisfied</span>
+                                                <span className="text-xs text-gray-500">전혀 그렇지 않다</span>
                                                 <div className="flex space-x-2">
                                                     {[1, 2, 3, 4, 5].map(value => (
                                                         <button
@@ -260,24 +265,25 @@
                                                         </button>
                                                     ))}
                                                 </div>
-                                                <span className="text-xs text-gray-500">Very Satisfied</span>
+                                                <span className="text-xs text-gray-500">매우 그렇다</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* LLM Usage (only for with_llm condition) */}
+                                {/* Section B & C: LLM Usage (only for with_llm condition) */}
                                 {condition === 'with_llm' && (
                                     <div className="border-b pb-6">
-                                        <h2 className="text-xl font-bold text-gray-800 mb-4">AI Assistant Experience</h2>
-                                        
+                                        <h2 className="text-xl font-bold text-gray-800 mb-2">Section B. 유용성 (Usefulness) & Section C. 신뢰와 만족도 (Trust & Satisfaction)</h2>
+                                        <p className="text-sm text-gray-600 mb-4">LLM이 논문 읽기 이해와 사고 수준 향상에 얼마나 도움을 주었는지 평가합니다.</p>
+
                                         <div className="space-y-6">
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-3">
-                                                    How helpful was the AI assistant?
+                                                    1. LLM은 논문의 주요 개념이나 용어를 쉽게 이해하도록 도와주었다.
                                                 </label>
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-xs text-gray-500">Not Helpful</span>
+                                                    <span className="text-xs text-gray-500">전혀 그렇지 않다</span>
                                                     <div className="flex space-x-2">
                                                         {[1, 2, 3, 4, 5].map(value => (
                                                             <button
@@ -294,16 +300,16 @@
                                                             </button>
                                                         ))}
                                                     </div>
-                                                    <span className="text-xs text-gray-500">Very Helpful</span>
+                                                    <span className="text-xs text-gray-500">매우 그렇다</span>
                                                 </div>
                                             </div>
 
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-3">
-                                                    How much did you trust the AI's responses?
+                                                    2. LLM의 응답은 신뢰할 만했다.
                                                 </label>
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-xs text-gray-500">Did Not Trust</span>
+                                                    <span className="text-xs text-gray-500">전혀 그렇지 않다</span>
                                                     <div className="flex space-x-2">
                                                         {[1, 2, 3, 4, 5].map(value => (
                                                             <button
@@ -320,16 +326,16 @@
                                                             </button>
                                                         ))}
                                                     </div>
-                                                    <span className="text-xs text-gray-500">Fully Trusted</span>
+                                                    <span className="text-xs text-gray-500">매우 그렇다</span>
                                                 </div>
                                             </div>
 
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-3">
-                                                    How much did the AI influence your understanding?
+                                                    3. LLM 사용 경험은 전반적으로 만족스러웠다.
                                                 </label>
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-xs text-gray-500">No Influence</span>
+                                                    <span className="text-xs text-gray-500">전혀 그렇지 않다</span>
                                                     <div className="flex space-x-2">
                                                         {[1, 2, 3, 4, 5].map(value => (
                                                             <button
@@ -346,33 +352,33 @@
                                                             </button>
                                                         ))}
                                                     </div>
-                                                    <span className="text-xs text-gray-500">Strong Influence</span>
+                                                    <span className="text-xs text-gray-500">매우 그렇다</span>
                                                 </div>
                                             </div>
 
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    What were the main advantages of using the AI assistant?
+                                                    LLM이 논문 이해를 돕는 과정에서 가장 도움이 되었던 점은 무엇인가요?
                                                 </label>
                                                 <textarea
                                                     value={llmAdvantages}
                                                     onChange={(e) => setLlmAdvantages(e.target.value)}
                                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-purple-500"
                                                     rows="3"
-                                                    placeholder="Please describe..."
+                                                    placeholder="자유롭게 의견을 남겨주세요..."
                                                 />
                                             </div>
 
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    What were the main disadvantages or limitations?
+                                                    LLM이 논문 이해를 돕는 과정에서 부족하다고 느낀 부분이 있었다면 설명해주세요.
                                                 </label>
                                                 <textarea
                                                     value={llmDisadvantages}
                                                     onChange={(e) => setLlmDisadvantages(e.target.value)}
                                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-purple-500"
                                                     rows="3"
-                                                    placeholder="Please describe..."
+                                                    placeholder="자유롭게 의견을 남겨주세요..."
                                                 />
                                             </div>
                                         </div>
@@ -381,58 +387,58 @@
 
                                 {/* Overall Feedback */}
                                 <div className="pb-6">
-                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Overall Feedback</h2>
-                                    
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4">추가 피드백</h2>
+
                                     <div className="space-y-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                What strategies did you use to understand the paper?
+                                                논문을 이해하기 위해 어떤 전략을 사용하셨나요?
                                             </label>
                                             <textarea
                                                 value={strategies}
                                                 onChange={(e) => setStrategies(e.target.value)}
                                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500"
                                                 rows="3"
-                                                placeholder="e.g., reading abstract first, focusing on figures..."
+                                                placeholder="예: 초록 먼저 읽기, 그림에 집중하기..."
                                             />
                                         </div>
 
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                What were the main challenges you faced?
+                                                논문을 읽는 과정에서 겪은 주요 어려움은 무엇이었나요?
                                             </label>
                                             <textarea
                                                 value={challenges}
                                                 onChange={(e) => setChallenges(e.target.value)}
                                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500"
                                                 rows="3"
-                                                placeholder="Please describe..."
+                                                placeholder="자유롭게 작성해주세요..."
                                             />
                                         </div>
 
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                How could this reading experience be improved?
+                                                논문 읽기 경험을 개선하기 위해 어떤 점이 보완되면 좋을까요?
                                             </label>
                                             <textarea
                                                 value={improvements}
                                                 onChange={(e) => setImprovements(e.target.value)}
                                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500"
                                                 rows="3"
-                                                placeholder="Please describe..."
+                                                placeholder="자유롭게 작성해주세요..."
                                             />
                                         </div>
 
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Any additional comments?
+                                                기타 의견이 있으시면 자유롭게 작성해주세요.
                                             </label>
                                             <textarea
                                                 value={additionalComments}
                                                 onChange={(e) => setAdditionalComments(e.target.value)}
                                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500"
                                                 rows="3"
-                                                placeholder="Optional..."
+                                                placeholder="선택사항..."
                                             />
                                         </div>
                                     </div>
