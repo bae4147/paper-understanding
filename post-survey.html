@@ -113,16 +113,6 @@
                         completedAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
 
-                    // Also update the experiment document if sessionId exists
-                    if (sessionId) {
-                        const experimentRef = db.collection('users').doc(participantId)
-                            .collection('experiments').doc(sessionId);
-                        await experimentRef.update({
-                            postSurvey: surveyData,
-                            status: 'completed_with_survey'
-                        });
-                    }
-
                     console.log('✅ Post-survey saved');
 
                     // Show completion message

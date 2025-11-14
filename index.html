@@ -8,11 +8,14 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
+    <!-- Papers data -->
+    <script src="papers-data.js"></script>
+
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, addDoc, doc, setDoc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         
         const firebaseConfig = {
             apiKey: "AIzaSyDPd-Fz-PdUwc9uvXAg_xEVR5FyPWCg_zA",
@@ -31,6 +34,7 @@
         window.firebaseCollection = collection;
         window.firebaseAddDoc = addDoc;
         window.firebaseDoc = doc;
+        window.firebaseGetDoc = getDoc;
         window.firebaseSetDoc = setDoc;
         window.firebaseUpdateDoc = updateDoc;
         window.firebaseServerTimestamp = serverTimestamp;
@@ -185,11 +189,8 @@
             const typingTimeoutRef = useRef(null); // 타이핑 멈춤 감지용
             const lastTypingActivityRef = useRef(Date.now()); // 마지막 타이핑 활동 시간
 
-            // Papers
-            const papers = [
-                { id: 'chi2025-lbw-01', name: '"A Great Start, But...": Evaluating LLM-Generated Mind Maps for Information Mapping', url: 'papers_html/chi2025-lbw-01.html' },
-                // Add more papers here as you process them
-            ];
+            // Papers - use from shared data file
+            const papers = AVAILABLE_PAPERS;
 
             // Sample quiz questions (will be loaded from external source)
             const quizQuestions = [
@@ -238,13 +239,11 @@
                 if (urlMode === 'experiment' && urlPid) {
                     const loadSessionOrder = async () => {
                         try {
-                            const userDoc = await window.firebaseDb
-                                .collection('users')
-                                .doc(urlPid)
-                                .get();
+                            const userDocRef = window.firebaseDoc(window.firebaseDb, 'users', urlPid);
+                            const userDocSnap = await window.firebaseGetDoc(userDocRef);
 
-                            if (userDoc.exists) {
-                                const data = userDoc.data();
+                            if (userDocSnap.exists()) {
+                                const data = userDocSnap.data();
                                 if (data.sessionOrder) {
                                     setSessionOrder(data.sessionOrder);
                                     console.log('✅ Loaded session order:', data.sessionOrder);
@@ -274,6 +273,45 @@
 
                                     if (proseDiv) {
                                         setPaperContent(proseDiv.innerHTML);
+
+                                        // Calculate section boundaries from DOM
+                                        setTimeout(() => {
+                                            const sections = document.querySelectorAll('[data-section]');
+                                            const container = document.getElementById('paper-content') || document.querySelector('.prose');
+
+                                            if (sections.length > 0 && container) {
+                                                const newBoundaries = {};
+
+                                                sections.forEach((section, index) => {
+                                                    const sectionName = section.getAttribute('data-section');
+                                                    const sectionTop = section.offsetTop;
+
+                                                    let sectionEnd;
+                                                    if (index < sections.length - 1) {
+                                                        sectionEnd = sections[index + 1].offsetTop;
+                                                    } else {
+                                                        sectionEnd = container.scrollHeight;
+                                                    }
+
+                                                    newBoundaries[sectionName] = {
+                                                        start: sectionTop,
+                                                        end: sectionEnd
+                                                    };
+                                                });
+
+                                                setSectionBoundaries(newBoundaries);
+                                                console.log('📊 Section Boundaries loaded:', newBoundaries);
+
+                                                // Set initial section
+                                                const firstSection = Object.keys(newBoundaries)[0];
+                                                if (firstSection) {
+                                                    setCurrentSection(firstSection);
+                                                }
+                                            } else {
+                                                console.warn('⚠️ No sections found in paper');
+                                            }
+                                        }, 500); // Wait for DOM to render
+
                                     } else {
                                         console.error('Could not find .prose element in paper HTML');
                                         setPaperContent('<p>Error: Could not load paper content</p>');
@@ -292,6 +330,81 @@
                     }, 500); // Wait for Firebase data to load
                 }
             }, []);
+
+            // Create experiment document when entering reading-guide phase
+            React.useEffect(() => {
+                const createExperimentDoc = async () => {
+                    if (phase === 'reading-guide' && participantId && sessionId && currentPaper) {
+                        try {
+                            if (window.firebaseDb) {
+                                const experimentRef = window.firebaseDoc(
+                                    window.firebaseDb,
+                                    `users/${participantId}/experiments/${sessionId}`
+                                );
+
+                                await window.firebaseSetDoc(experimentRef, {
+                                    participantId: participantId,
+                                    sessionId: sessionId,
+                                    condition: condition,
+                                    paper: currentPaper,
+                                    sessionNumber: sessionNumber,
+                                    startedAt: window.firebaseServerTimestamp(),
+                                    status: 'in_progress',
+                                    createdAt: Date.now()
+                                });
+
+                                console.log('✅ Experiment document created:', `users/${participantId}/experiments/${sessionId}`);
+                            }
+                        } catch (error) {
+                            console.error('❌ Failed to create experiment document:', error);
+                        }
+                    }
+                };
+                createExperimentDoc();
+            }, [phase]);
+
+            // Calculate section boundaries when entering reading phase
+            React.useEffect(() => {
+                if (phase === 'reading' && paperContent) {
+                    // Wait for DOM to render
+                    setTimeout(() => {
+                        const sections = document.querySelectorAll('[data-section]');
+                        const container = document.getElementById('paper-content') || document.querySelector('.prose');
+
+                        if (sections.length > 0 && container) {
+                            const newBoundaries = {};
+
+                            sections.forEach((section, index) => {
+                                const sectionName = section.getAttribute('data-section');
+                                const sectionTop = section.offsetTop;
+
+                                let sectionEnd;
+                                if (index < sections.length - 1) {
+                                    sectionEnd = sections[index + 1].offsetTop;
+                                } else {
+                                    sectionEnd = container.scrollHeight;
+                                }
+
+                                newBoundaries[sectionName] = {
+                                    start: sectionTop,
+                                    end: sectionEnd
+                                };
+                            });
+
+                            setSectionBoundaries(newBoundaries);
+                            console.log('📊 Section Boundaries calculated on reading phase:', newBoundaries);
+
+                            // Set initial section
+                            const firstSection = Object.keys(newBoundaries)[0];
+                            if (firstSection) {
+                                setCurrentSection(firstSection);
+                            }
+                        } else {
+                            console.warn('⚠️ No sections found in paper (reading phase)');
+                        }
+                    }, 500); // Wait for React to render
+                }
+            }, [phase, paperContent]);
 
             // Log event
             const logEvent = async (eventType, additionalData = {}) => {
@@ -1892,13 +2005,13 @@
                 const handleComplete = () => {
                     if (mode === 'experiment') {
                         if (sessionNumber === 1) {
-                            // Move to session 2
+                            // Move to session 2 with fixed paper assignment
                             const nextCondition = sessionOrder[1];
                             const params = new URLSearchParams({
                                 participantId,
                                 mode: 'experiment',
                                 condition: nextCondition,
-                                paper: currentPaper,
+                                paper: 'chi2025-lbw-03', // Fixed paper for session 2
                                 sessionNumber: '2'
                             });
                             window.location.href = `index.html?${params.toString()}`;

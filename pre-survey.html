@@ -12,6 +12,9 @@
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <!-- Papers data -->
+    <script src="papers-data.js"></script>
 </head>
 <body>
     <div id="root"></div>
@@ -81,9 +84,8 @@
             const [llmPurposeRatings, setLlmPurposeRatings] = useState({});
             // Structure: { 'Reading papers': { trust: '3', usefulness: '3' }, ... }
 
-            const papers = [
-                { id: 'chi2025-lbw-01', name: '"A Great Start, But...": Evaluating LLM-Generated Mind Maps for Information Mapping' }
-            ];
+            // Use papers from shared data file
+            const papers = AVAILABLE_PAPERS;
 
             const llmPurposeOptions = [
                 'Reading papers',
@@ -128,7 +130,9 @@
                 e.preventDefault();
                 
                 // Validation
-                if (!participantId || !currentPaper || !gender || !age || !education ||
+                // In experiment mode, currentPaper is not required (fixed assignment)
+                // In test mode, currentPaper must be selected
+                if (!participantId || (mode === 'test' && !currentPaper) || !gender || !age || !education ||
                     !major || !semester || !hasSubmission || !hasNonHciSubmission || !llmFrequency) {
                     alert('Please fill in all required fields (*)');
                     return;
@@ -137,7 +141,7 @@
                 const surveyData = {
                     participantId,
                     condition: mode === 'experiment' ? 'experiment_mode' : condition,
-                    paper: currentPaper,
+                    paper: mode === 'experiment' ? 'chi2025-lbw-02,chi2025-lbw-03' : currentPaper,
                     mode,
                     sessionOrder: mode === 'experiment' ? sessionOrder : null,
                     demographics: {
@@ -169,7 +173,7 @@
                     await docRef.set({
                         participantId,
                         condition: mode === 'experiment' ? 'experiment_mode' : condition,
-                        paper: currentPaper,
+                        paper: mode === 'experiment' ? 'chi2025-lbw-02,chi2025-lbw-03' : currentPaper,
                         mode,
                         sessionOrder: mode === 'experiment' ? sessionOrder : null,
                         preSurvey: surveyData,
@@ -180,12 +184,12 @@
 
                     // Navigate to experiment
                     if (mode === 'experiment') {
-                        // Start with first session
+                        // Start with first session - fixed paper assignment
                         const params = new URLSearchParams({
                             participantId,
                             mode: 'experiment',
                             condition: sessionOrder[0],
-                            paper: currentPaper,
+                            paper: 'chi2025-lbw-02', // Fixed paper for session 1
                             sessionNumber: '1'
                         });
                         window.location.href = `index.html?${params.toString()}`;
@@ -260,6 +264,8 @@
                                         </div>
                                         )}
 
+                                        {/* Only show paper selection in test mode */}
+                                        {mode === 'test' && (
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Select Paper *
@@ -278,6 +284,7 @@
                                                 ))}
                                             </select>
                                         </div>
+                                        )}
                                     </div>
                                 </div>
 

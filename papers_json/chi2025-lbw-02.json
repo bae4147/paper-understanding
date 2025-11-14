@@ -1,0 +1,66 @@
+{
+  "paper_id": "chi2025-lbw-02",
+  "title": "Exploring Older Adults Personality Preferences for LLM-powered Conversational Companions",
+  "authors": [],
+  "abstract": "Studies have shown promise in using conversational agents (CAs) to reduce loneliness among older adults. Recent advances in large language models (LLMs) have enhanced these systems by enabling more natural, human-like interactions. However, little is known about how CA personalities influence user experiences, despite personality being a key factor in human conversation. To explore this, we developed a smart speaker-based CA powered by an LLM and conducted a two-phase user study consisting of in-lab sessions and home deployments. We investigated how older adults perceive different CA personalities and how these personalities affect their interaction experiences. Our findings show that participants could distinguish between different personality characteristics and had varying preferences for different personalities during both short-term and long-term interactions.",
+  "sections": [
+    {
+      "title": "Abstract"
+    },
+    {
+      "title": "1 Introduction"
+    },
+    {
+      "title": "2 Related Work"
+    },
+    {
+      "title": "3 System Implementation"
+    },
+    {
+      "title": "4 Methods"
+    },
+    {
+      "title": "5 Findings and Discussion"
+    },
+    {
+      "title": "6 Next Steps and Conclusion"
+    },
+    {
+      "title": "A Appendix"
+    }
+  ],
+  "section_boundaries": {
+    "Abstract": {
+      "start": 176,
+      "end": 2030
+    },
+    "1 Introduction": {
+      "start": 2030,
+      "end": 9814
+    },
+    "2 Related Work": {
+      "start": 9814,
+      "end": 20480
+    },
+    "3 System Implementation": {
+      "start": 20480,
+      "end": 27528
+    },
+    "4 Methods": {
+      "start": 27528,
+      "end": 35220
+    },
+    "5 Findings and Discussion": {
+      "start": 35220,
+      "end": 51150
+    },
+    "6 Next Steps and Conclusion": {
+      "start": 51150,
+      "end": 57378
+    },
+    "A Appendix": {
+      "start": 57378,
+      "end": 58166
+    }
+  }
+}

@@ -8,6 +8,9 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Papers data -->
+    <script src="papers-data.js"></script>
 </head>
 <body>
     <div id="root"></div>
@@ -55,7 +58,7 @@
                 }
 
                 // Navigate directly to reading phase with test parameters
-                window.location.href = `reading.html?participantId=${encodeURIComponent(participantId)}&condition=${testCondition}&paper=${testPaper}&mode=test`;
+                window.location.href = `index.html?participantId=${encodeURIComponent(participantId)}&condition=${testCondition}&paper=${testPaper}&mode=test`;
             };
 
             return (
@@ -454,8 +457,8 @@
                                             className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                                         >
                                             <option value="">선택하세요</option>
-                                            <option value="with-ai">AI 지원 O</option>
-                                            <option value="without-ai">AI 지원 X</option>
+                                            <option value="with_llm">AI 지원 O</option>
+                                            <option value="without_llm">AI 지원 X</option>
                                         </select>
                                     </div>
 
@@ -469,8 +472,11 @@
                                             className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                                         >
                                             <option value="">선택하세요</option>
-                                            <option value="paper1">논문 1</option>
-                                            <option value="paper2">논문 2</option>
+                                            {AVAILABLE_PAPERS.map(paper => (
+                                                <option key={paper.id} value={paper.id}>
+                                                    {paper.name}
+                                                </option>
+                                            ))}
                                         </select>
                                     </div>
                                 </div>

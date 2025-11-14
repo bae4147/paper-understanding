@@ -1,0 +1,73 @@
+{
+  "paper_id": "chi2025-lbw-03",
+  "title": "Finding the Right Balance: User Control and Automation in AI Tools for Supporting Older Adults' Health Information Tasks",
+  "authors": [],
+  "abstract": "Older adults face unique challenges in maintaining independence while managing increasingly complex health information tasks in their home environment. AI-assisted tools have emerged as promising solutions to support these needs, yet determining the optimal balance between system automation and user agency remains a critical challenge. This paper investigates older adults’ preferences regarding automation levels for different AI features supporting health information tasks. We developed a tablet-based prototype that explores various degrees of automation across these features, from fully automated to manual control and mixed-initiative approaches. Through focus group studies with nine older adults, we found that participants’ desired level of automation varied significantly based on task characteristics and complexity. Based on these insights, we developed a classification framework categorizing features by preferred interaction approaches: full delegation, direct control, and collaborative completion, leading to design recommendations for balancing system capabilities with user agency in AI-assisted health information tools.",
+  "sections": [
+    {
+      "title": "Abstract"
+    },
+    {
+      "title": "1 Introduction"
+    },
+    {
+      "title": "2 Related Work"
+    },
+    {
+      "title": "3 Health Information Prototype"
+    },
+    {
+      "title": "4 Study Design"
+    },
+    {
+      "title": "5 Findings"
+    },
+    {
+      "title": "6 Discussion"
+    },
+    {
+      "title": "7 Conclusion"
+    },
+    {
+      "title": "Acknowledgments"
+    }
+  ],
+  "section_boundaries": {
+    "Abstract": {
+      "start": 240,
+      "end": 2626
+    },
+    "1 Introduction": {
+      "start": 2626,
+      "end": 8832
+    },
+    "2 Related Work": {
+      "start": 8832,
+      "end": 13382
+    },
+    "3 Health Information Prototype": {
+      "start": 13382,
+      "end": 19422
+    },
+    "4 Study Design": {
+      "start": 19422,
+      "end": 25460
+    },
+    "5 Findings": {
+      "start": 25460,
+      "end": 42942
+    },
+    "6 Discussion": {
+      "start": 42942,
+      "end": 60530
+    },
+    "7 Conclusion": {
+      "start": 60530,
+      "end": 61872
+    },
+    "Acknowledgments": {
+      "start": 61872,
+      "end": 65932
+    }
+  }
+}
