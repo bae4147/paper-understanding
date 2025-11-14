@@ -242,7 +242,7 @@
                                         {mode === 'experiment' && (
                                             <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
                                                 <p className="text-sm text-blue-800">
-                                                    <strong>실험 모드:</strong> 두 세션이 자동으로 배정됩니다 (순서: {sessionOrder.map(c => c === 'with_llm' ? 'AI와 함께 읽기' : 'AI 없이 읽기').join(' → ')})
+                                                    <strong>실험 모드:</strong> 두 세션이 자동으로 배정되었습니다. ({sessionOrder.map(c => c === 'with_llm' ? 'AI와 함께 읽기' : 'AI 없이 읽기').join(' → ')})
                                                 </p>
                                             </div>
                                         )}
@@ -482,7 +482,7 @@
                                                 value={major}
                                                 onChange={(e) => setMajor(e.target.value)}
                                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                placeholder="예: 컴퓨터공학과, 데이터과학과"
+                                                placeholder="예: 컴퓨터공학, 데이터사이언스"
                                                 required
                                             />
                                         </div>

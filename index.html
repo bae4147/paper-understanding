@@ -1393,7 +1393,7 @@
             // READING GUIDE PHASE
             if (phase === 'reading-guide') {
                 const paper = papers.find(p => p.id === currentPaper);
-                const conditionText = condition === 'with_llm' ? 'AI 지원 O' : 'AI 지원 X';
+                const conditionText = condition === 'with_llm' ? 'Reading with LLM' : 'Reading without LLM';
 
                 return (
                     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
