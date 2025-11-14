@@ -771,6 +771,10 @@
                         body: JSON.stringify({
                             model: 'gpt-4',
                             messages: [
+                                {
+                                    role: 'system',
+                                    content: `You are a helpful research assistant. The user is reading an academic paper. Here is the paper content for reference:\n\n${paperContent.replace(/<[^>]*>/g, '').substring(0, 15000)}\n\nAnswer questions about this paper clearly and concisely.`
+                                },
                                 ...messages.map(msg => ({
                                     role: msg.role,
                                     content: msg.content
