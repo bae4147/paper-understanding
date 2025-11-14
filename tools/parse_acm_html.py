@@ -409,17 +409,30 @@ def parse_acm_html(html_path, paper_id):
         print(f"✓ Found body content")
         
         for element in body_section.find_all(['section', 'div', 'figure'], recursive=True):
-            # Section headers
+            # Section headers (h2 for main sections)
             if element.name == 'section' and element.get('id', '').startswith('sec-'):
                 h2 = element.find('h2', recursive=False)
                 if h2:
                     section_title = h2.get_text(strip=True)
-                    metadata['sections'].append({'title': section_title})
+                    metadata['sections'].append({'title': section_title, 'level': 2})
                     content.append({
                         'type': 'section',
-                        'text': section_title
+                        'text': section_title,
+                        'level': 2
                     })
                     print(f"  📑 Section: {section_title}")
+
+                # Subsection headers (h3)
+                h3 = element.find('h3', recursive=False)
+                if h3:
+                    subsection_title = h3.get_text(strip=True)
+                    metadata['sections'].append({'title': subsection_title, 'level': 3})
+                    content.append({
+                        'type': 'subsection',
+                        'text': subsection_title,
+                        'level': 3
+                    })
+                    print(f"    📑 Subsection: {subsection_title}")
             
             # Figures (images and tables)
             elif element.name == 'figure':
@@ -510,19 +523,19 @@ def calculate_section_boundaries(content, metadata):
     
     # Process content to find sections and their lengths
     for item in content:
-        if item['type'] == 'section':
+        if item['type'] == 'section' or item['type'] == 'subsection':
             # If there was a previous section, close it
             if sections_list and 'end' not in sections_list[-1]:
                 sections_list[-1]['end'] = current_position
-            
-            # Start new section
+
+            # Start new section/subsection
             sections_list.append({
                 'name': item['text'],
                 'start': current_position,
                 'content_length': len(item['text']) * 2
             })
             current_position += len(item['text']) * 2
-            
+
         elif item['type'] == 'paragraph':
             if sections_list:
                 sections_list[-1]['content_length'] += len(item['text']) * 2
@@ -572,7 +585,10 @@ def generate_clean_html(data, paper_id):
     for item in content:
         if item['type'] == 'section':
             content_html.append(f'<h2 class="text-2xl font-bold mb-4 mt-8" data-section="{item["text"]}">{item["text"]}</h2>')
-        
+
+        elif item['type'] == 'subsection':
+            content_html.append(f'<h3 class="text-xl font-semibold mb-3 mt-6" data-section="{item["text"]}">{item["text"]}</h3>')
+
         elif item['type'] == 'paragraph':
             content_html.append(f'<p class="mb-4 text-justify">{item["text"]}</p>')
         
