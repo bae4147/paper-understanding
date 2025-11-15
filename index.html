@@ -130,10 +130,10 @@
             const [readingActive, setReadingActive] = useState(false);
             const [paperContent, setPaperContent] = useState('');
             
-            // Tab state (for with_llm condition)
-            const [activeTab, setActiveTab] = useState('reading'); // 'reading' or 'ai'
-            const [tabTimes, setTabTimes] = useState({ reading: 0, ai: 0 });
-            const tabStartTimeRef = useRef(Date.now());
+            // Focus state (for with_llm condition) - cursor-based tracking
+            const [activeFocus, setActiveFocus] = useState('reading'); // 'reading' or 'chat'
+            const [focusTimes, setFocusTimes] = useState({ reading: 0, chat: 0 });
+            const focusStartTimeRef = useRef(Date.now());
             const savedScrollPosition = useRef(0); // 스크롤 위치 저장용
 
             // Quiz phase state
@@ -156,7 +156,8 @@
             const [showPlusMenu, setShowPlusMenu] = useState(false);
             const [chatHistory, setChatHistory] = useState([]); // Full Q&A log
             const [uploadedFiles, setUploadedFiles] = useState([]); // Track uploaded files
-            const fileInputRef = useRef(null);
+            const chatMessagesEndRef = useRef(null); // For auto-scroll to bottom
+            const textareaRef = useRef(null); // For textarea height control
 
             // Timer tracking
             const phaseStartTime = useRef(Date.now());
@@ -371,6 +372,13 @@
                 };
             }, []);
 
+            // Auto-scroll chat to bottom when messages change
+            useEffect(() => {
+                if (chatMessagesEndRef.current) {
+                    chatMessagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+                }
+            }, [messages, isLoading]);
+
             // Create experiment document when entering reading-guide phase
             React.useEffect(() => {
                 const createExperimentDoc = async () => {
@@ -529,38 +537,38 @@
             };
 
             // Tab switching with time tracking
-            const switchTab = (newTab) => {
-                if (newTab === activeTab) return;
-                
+            const switchFocus = (newFocus) => {
+                if (newFocus === activeFocus) return;
+
                 const now = Date.now();
-                
-                // === LLM 탭에서 나갈 때: 마지막 타이핑 구간 저장 ===
-                if (activeTab === 'ai') {
+
+                // === Chat 포커스에서 나갈 때: 마지막 타이핑 구간 저장 ===
+                if (activeFocus === 'chat') {
                     const activityDuration = now - lastTypingActivityRef.current;
                     const classification = isTypingRef.current ? 'typing' : 'none-typing';
-                    
+
                     // Clear typing timeout
                     if (typingTimeoutRef.current) {
                         clearTimeout(typingTimeoutRef.current);
                         typingTimeoutRef.current = null;
                     }
-                    
+
                     logEvent('llm_activity', {
                         classification: classification,
                         duration: activityDuration,
-                        isTabSwitch: true
+                        isFocusSwitch: true
                     });
-                    
-                    console.log(`⌨️  [${classification.toUpperCase()}] duration: ${activityDuration}ms before leaving AI tab`);
-                    
+
+                    console.log(`⌨️  [${classification.toUpperCase()}] duration: ${activityDuration}ms before leaving Chat`);
+
                     // Reset typing state
                     isTypingRef.current = false;
                 }
-                
-                // LLM 탭으로 전환: reading 타이머 중단 및 현재 구간 저장
-                if (newTab === 'ai' && activeTab === 'reading') {
+
+                // Chat으로 전환: reading 타이머 중단 및 현재 구간 저장
+                if (newFocus === 'chat' && activeFocus === 'reading') {
                     const pauseDuration = now - lastActivityTimeRef.current;
-                    
+
                     let classification;
                     if (pauseDuration > 5000) {
                         classification = 'reading';
@@ -569,7 +577,7 @@
                     } else {
                         classification = 'scrolling';
                     }
-                    
+
                     logEvent('scroll_action', {
                         scrollY: pdfContainerRef.current?.scrollTop || 0,
                         sectionBeforeScroll: currentSection,
@@ -577,118 +585,132 @@
                         classification: classification,
                         pauseDuration: pauseDuration,
                         scrollDuration: 0,
-                        isTabSwitch: true,
+                        isFocusSwitch: true,
                         timestamp: now
                     });
-                    
-                    console.log(`🔄 [TAB → AI] Saved ${classification}: ${pauseDuration}ms at "${currentSection}"`);
-                    
-                    // LLM 탭으로 들어갈 때 타이핑 타이머 초기화
+
+                    console.log(`🔄 [FOCUS → CHAT] Saved ${classification}: ${pauseDuration}ms at "${currentSection}"`);
+
+                    // Chat으로 들어갈 때 타이핑 타이머 초기화
                     lastTypingActivityRef.current = now;
                     isTypingRef.current = false;
                 }
-                
-                // Reading 탭으로 복귀: 타이머 재시작
-                if (newTab === 'reading' && activeTab === 'ai') {
+
+                // Reading으로 복귀: 타이머 재시작
+                if (newFocus === 'reading' && activeFocus === 'chat') {
                     lastActivityTimeRef.current = now;
-                    console.log(`🔄 [TAB → READING] Timer restarted`);
+                    console.log(`🔄 [FOCUS → READING] Timer restarted`);
                 }
-                
-                // 현재 reading 탭이면 스크롤 위치 저장
-                if (activeTab === 'reading' && pdfContainerRef.current) {
-                    savedScrollPosition.current = pdfContainerRef.current.scrollTop;
-                    console.log(`💾 Saved scroll: ${savedScrollPosition.current}px`);
-                }
-                
-                // Record time spent on current tab
-                const elapsed = Date.now() - tabStartTimeRef.current;
-                setTabTimes(prev => ({
+
+                // Record time spent on current focus
+                const elapsed = Date.now() - focusStartTimeRef.current;
+                setFocusTimes(prev => ({
                     ...prev,
-                    [activeTab]: prev[activeTab] + elapsed
+                    [activeFocus]: prev[activeFocus] + elapsed
                 }));
-                
-                // Log tab switch with LLM classification
+
+                // Log focus switch with LLM classification
                 const switchEventData = {
-                    from: activeTab,
-                    to: newTab,
-                    timeOnPreviousTab: elapsed
+                    from: activeFocus,
+                    to: newFocus,
+                    timeOnPreviousFocus: elapsed
                 };
-                
-                // AI 탭에서 나가는 경우 → LLM duration으로 분류
-                if (activeTab === 'ai') {
+
+                // Chat에서 나가는 경우 → LLM duration으로 분류
+                if (activeFocus === 'chat') {
                     switchEventData.classification = 'llm';
                     switchEventData.llmDuration = elapsed;
                     console.log(`🤖 [LLM] duration: ${elapsed}ms`);
                 }
-                
-                logEvent('tab_switch', switchEventData);
-                
-                // Switch to new tab
-                setActiveTab(newTab);
-                tabStartTimeRef.current = Date.now();
-                
-                // reading 탭으로 돌아오면 스크롤 위치 복원
-                if (newTab === 'reading') {
-                    setTimeout(() => {
-                        if (pdfContainerRef.current && savedScrollPosition.current > 0) {
-                            pdfContainerRef.current.scrollTop = savedScrollPosition.current;
-                            console.log(`📍 Restored scroll: ${savedScrollPosition.current}px`);
-                        }
-                    }, 100);
-                }
+
+                logEvent('focus_switch', switchEventData);
+
+                // Switch to new focus
+                setActiveFocus(newFocus);
+                focusStartTimeRef.current = Date.now();
             };
             
-            // Handle typing in LLM tab
+            // Handle typing in Chat
             const handleTyping = () => {
-                if (activeTab !== 'ai') return; // Only track in AI tab
-                
+                if (activeFocus !== 'chat') return; // Only track in Chat
+
                 const now = Date.now();
-                
+
                 // 타이핑 시작
                 if (!isTypingRef.current) {
                     // 이전 none-typing 구간 저장
                     const noneTypingDuration = now - lastTypingActivityRef.current;
-                    
+
                     if (noneTypingDuration > 100) { // 최소 100ms 이상
                         logEvent('llm_activity', {
                             classification: 'none-typing',
                             duration: noneTypingDuration
                         });
-                        
+
                         console.log(`⌨️  [NONE-TYPING] duration: ${noneTypingDuration}ms`);
                     }
-                    
+
                     isTypingRef.current = true;
                     lastTypingActivityRef.current = now;
                 }
-                
+
                 // Clear existing timeout
                 if (typingTimeoutRef.current) {
                     clearTimeout(typingTimeoutRef.current);
                 }
-                
+
                 // 타이핑 멈춤 감지 (2초 동안 타이핑 없으면 멈춘 것으로 간주)
                 typingTimeoutRef.current = setTimeout(() => {
                     const stopTime = Date.now();
                     const typingDuration = stopTime - lastTypingActivityRef.current;
-                    
+
                     logEvent('llm_activity', {
                         classification: 'typing',
                         duration: typingDuration
                     });
-                    
+
                     console.log(`⌨️  [TYPING] duration: ${typingDuration}ms`);
-                    
+
                     // 타이핑 멈춤
                     isTypingRef.current = false;
                     lastTypingActivityRef.current = stopTime;
                 }, 2000);
             };
 
+            // Handle key press in chat input (shift+enter for newline, enter to send)
+            const handleChatKeyDown = (e) => {
+                handleTyping(); // Track typing activity
+
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault(); // Prevent default newline
+                    if (inputMessage.trim()) {
+                        // Trigger form submit
+                        e.target.form.requestSubmit();
+                    }
+                }
+                // If shift+enter, allow default behavior (newline)
+            };
+
+            // Auto-resize textarea based on content
+            const handleTextareaChange = (e) => {
+                setInputMessage(e.target.value);
+
+                // Reset height to auto to get the correct scrollHeight
+                e.target.style.height = 'auto';
+
+                // Set height based on scrollHeight, max 11 lines (~264px)
+                const lineHeight = 24; // approximate line height
+                const maxLines = 11;
+                const maxHeight = lineHeight * maxLines;
+                const newHeight = Math.min(e.target.scrollHeight, maxHeight);
+
+                e.target.style.height = newHeight + 'px';
+            };
+
             // Handle scroll - track reading behavior
             const handleScroll = (e) => {
-                // Don't track scroll if not on reading tab
-                if (activeTab !== 'reading') return;
+                // Don't track scroll if not focused on reading
+                if (activeFocus !== 'reading') return;
                 
                 const scrollY = e.target.scrollTop;
                 const viewportHeight = e.target.clientHeight;
@@ -778,27 +800,56 @@
             // Send LLM message
             const handleSendMessage = async (e) => {
                 e.preventDefault();
-                if (!inputMessage.trim()) return;
+                if (!inputMessage.trim() && uploadedFiles.length === 0) return;
 
                 // API 키 - GitHub Actions에서 주입됨
                 const apiKey = '__OPENAI_API_KEY__'; // 빌드시 교체됨
-                
+
                 const questionTime = Date.now();
+
+                // Build user message content with files
+                let messageContent = inputMessage;
+                if (uploadedFiles.length > 0) {
+                    const filesList = uploadedFiles.map(f => `📎 ${f.name}`).join('\n');
+                    messageContent = `${inputMessage}\n\n${filesList}`;
+                }
+
                 const userMessage = {
                     role: 'user',
-                    content: inputMessage,
-                    timestamp: questionTime
+                    content: messageContent,
+                    timestamp: questionTime,
+                    files: uploadedFiles.length > 0 ? [...uploadedFiles] : undefined
                 };
 
                 setMessages(prev => [...prev, userMessage]);
-                logEvent('llm_question_asked', { 
-                    question: inputMessage,
-                    timestamp: questionTime
-                });
-                
+
+                // Log with file attachment info
+                if (uploadedFiles.length > 0) {
+                    logEvent('llm_question_asked_with_files', {
+                        question: inputMessage,
+                        files: uploadedFiles.map(f => ({ name: f.name, type: f.type, url: f.url })),
+                        fileCount: uploadedFiles.length,
+                        timestamp: questionTime
+                    });
+                    console.log(`💬 [LLM QUESTION WITH FILES] Question: "${inputMessage}" | Files: ${uploadedFiles.map(f => f.name).join(', ')}`);
+                } else {
+                    logEvent('llm_question_asked', {
+                        question: inputMessage,
+                        timestamp: questionTime
+                    });
+                    console.log(`💬 [LLM QUESTION] "${inputMessage}"`);
+                }
+
                 setIsLoading(true);
                 const queryText = inputMessage;
+                const attachedFiles = [...uploadedFiles];
                 setInputMessage('');
+                setUploadedFiles([]); // Clear attached files
+
+                // Reset textarea height
+                if (textareaRef.current) {
+                    textareaRef.current.style.height = 'auto';
+                }
 
                 try {
                     // 실제 OpenAI API 호출
@@ -876,27 +927,48 @@
                 }
             };
 
-            // Handle file upload
-            const handleFileUpload = (e) => {
-                const files = Array.from(e.target.files);
-                const newFiles = files.map(file => ({
-                    name: file.name,
-                    size: file.size,
-                    type: file.type,
-                    timestamp: Date.now()
-                }));
-                
-                setUploadedFiles(prev => [...prev, ...newFiles]);
-                logEvent('file_uploaded', { files: newFiles.map(f => f.name) });
-                setShowPlusMenu(false);
-                
-                // Show in chat as uploaded
-                const uploadMessage = {
-                    role: 'system',
-                    content: `📎 Uploaded: ${files.map(f => f.name).join(', ')}`,
+            // Attach current paper PDF
+            const attachCurrentPaperPDF = () => {
+                console.log('🔍 Debug - currentPaper:', currentPaper);
+                console.log('🔍 Debug - papers:', papers);
+
+                const paper = papers.find(p => p.id === currentPaper);
+                console.log('🔍 Debug - found paper:', paper);
+
+                if (!paper) {
+                    console.error('❌ Paper not found for ID:', currentPaper);
+                    alert('현재 논문을 찾을 수 없습니다. 논문이 로드되지 않았을 수 있습니다.');
+                    setShowPlusMenu(false);
+                    return;
+                }
+
+                if (!paper.pdfUrl) {
+                    console.error('❌ No PDF URL for paper:', paper.id);
+                    alert('이 논문의 PDF 파일을 찾을 수 없습니다.');
+                    setShowPlusMenu(false);
+                    return;
+                }
+
+                const pdfFile = {
+                    name: `${paper.id}.pdf`,
+                    url: paper.pdfUrl,
+                    type: 'application/pdf',
                     timestamp: Date.now()
                 };
-                setMessages(prev => [...prev, uploadMessage]);
+
+                setUploadedFiles(prev => [...prev, pdfFile]);
+                logEvent('paper_pdf_attached', {
+                    paperId: paper.id,
+                    pdfUrl: paper.pdfUrl,
+                    timestamp: Date.now()
+                });
+                console.log(`📎 [PDF ATTACHED] ${pdfFile.name} (URL: ${paper.pdfUrl})`);
+                setShowPlusMenu(false);
+            };
+
+            // Remove file from attachment list
+            const removeFile = (index) => {
+                setUploadedFiles(prev => prev.filter((_, i) => i !== index));
             };
 
             // Start experiment
@@ -1006,16 +1078,16 @@
                 setReadingActive(false);
                 
                 console.log(`🏁 Completing reading phase...`);
-                console.log(`   Active tab: ${activeTab}`);
+                console.log(`   Active focus: ${activeFocus}`);
                 console.log(`   Current section: ${currentSection}`);
                 console.log(`   Last activity time: ${lastActivityTimeRef.current}`);
-                
+
                 // 마지막 이벤트 준비
                 let finalEvent = null;
-                
+
                 // 마지막 읽기 구간 강제 로깅 (Finish 버튼 누르기 직전)
-                // Reading 탭에 있을 때만 기록
-                if (activeTab === 'reading') {
+                // Reading에 포커스되어 있을 때만 기록
+                if (activeFocus === 'reading') {
                     const now = Date.now();
                     const finalPauseDuration = now - lastActivityTimeRef.current;
                     
@@ -1059,43 +1131,43 @@
                     
                     console.log(`🏁 [FINAL ${finalClassification.toUpperCase()}] pause: ${finalPauseDuration}ms at "${currentSection}"`);
                 } else {
-                    // AI 탭에 있다면 LLM duration 기록
+                    // Chat에 포커스되어 있다면 LLM duration 기록
                     const now = Date.now();
-                    const finalLLMDuration = now - tabStartTimeRef.current;
-                    
+                    const finalLLMDuration = now - focusStartTimeRef.current;
+
                     console.log(`   Final LLM duration: ${finalLLMDuration}ms`);
-                    
+
                     finalEvent = {
                         timestamp: now,
-                        eventType: 'tab_switch',
+                        eventType: 'focus_switch',
                         phase: 'reading',
                         timeSinceLast: now - lastEventTime.current,
                         participantId,
                         sessionId,
                         condition,
                         paper: currentPaper,
-                        from: activeTab,
+                        from: activeFocus,
                         to: 'finish',
-                        timeOnPreviousTab: finalLLMDuration,
+                        timeOnPreviousFocus: finalLLMDuration,
                         classification: 'llm',
                         llmDuration: finalLLMDuration,
                         isFinalSegment: true
                     };
-                    
+
                     setEvents(prev => [...prev, finalEvent]);
-                    
+
                     const storedEvents = JSON.parse(localStorage.getItem('experimentEvents') || '[]');
                     storedEvents.push(finalEvent);
                     localStorage.setItem('experimentEvents', JSON.stringify(storedEvents));
-                    
+
                     console.log(`🏁 [FINAL LLM] duration: ${finalLLMDuration}ms`);
                 }
-                
-                // Record final tab time
-                const elapsed = Date.now() - tabStartTimeRef.current;
-                const finalTabTimes = {
-                    ...tabTimes,
-                    [activeTab]: tabTimes[activeTab] + elapsed
+
+                // Record final focus time
+                const elapsed = Date.now() - focusStartTimeRef.current;
+                const finalFocusTimes = {
+                    ...focusTimes,
+                    [activeFocus]: focusTimes[activeFocus] + elapsed
                 };
                 
                 const readingDuration = Date.now() - phaseStartTime.current;
@@ -1143,9 +1215,9 @@
                     sectionAnalysis[section][e.classification] += (e.pauseDuration || 0);
                 });
                 
-                logEvent('reading_phase_complete', { 
+                logEvent('reading_phase_complete', {
                     duration: readingDuration,
-                    tabTimes: finalTabTimes,
+                    focusTimes: finalFocusTimes,
                     chatHistory: chatHistory,
                     classificationSummary,
                     sectionAnalysis
@@ -1160,23 +1232,24 @@
                         );
                         
                         // Reading phase의 모든 이벤트 필터링 (마지막 이벤트 포함)
-                        let readingEvents = events.filter(e => 
-                            e.phase === 'reading' && 
-                            (e.eventType === 'scroll_action' || 
+                        let readingEvents = events.filter(e =>
+                            e.phase === 'reading' &&
+                            (e.eventType === 'scroll_action' ||
+                             e.eventType === 'focus_switch' ||
                              e.eventType === 'tab_switch' ||
                              e.eventType === 'llm_activity' ||
                              e.eventType === 'text_selection')
                         );
-                        
+
                         // 마지막 이벤트 명시적으로 추가
                         if (finalEvent) {
                             readingEvents = [...readingEvents, finalEvent];
                             console.log(`   Including final event in Firebase save. Total events: ${readingEvents.length}`);
                         }
-                        
+
                         const updateData = {
                             'reading.duration': readingDuration,
-                            'reading.tabTimes': finalTabTimes,
+                            'reading.focusTimes': finalFocusTimes,
                             'reading.classificationSummary': classificationSummary,
                             'reading.sectionAnalysis': sectionAnalysis,
                             'reading.events': readingEvents, // 모든 이벤트 배열로 저장
@@ -1504,66 +1577,83 @@
                         </div>
 
                         {/* Main content */}
-                        <div className="flex-1 flex flex-col overflow-hidden">
-                            {/* Tabs (only for with_llm condition) */}
-                            {condition === 'with_llm' && (
-                                <div className="bg-white border-b-2 border-gray-200">
-                                    <div className="flex space-x-1 px-4">
-                                        <button
-                                            onClick={() => switchTab('reading')}
-                                            className={`px-6 py-3 font-medium transition-colors ${
-                                                activeTab === 'reading'
-                                                    ? 'border-b-2 border-blue-600 text-blue-600'
-                                                    : 'text-gray-600 hover:text-gray-800'
-                                            }`}
-                                        >
-                                            📄 Reading
-                                        </button>
-                                        <button
-                                            onClick={() => switchTab('ai')}
-                                            className={`px-6 py-3 font-medium transition-colors ${
-                                                activeTab === 'ai'
-                                                    ? 'border-b-2 border-blue-600 text-blue-600'
-                                                    : 'text-gray-600 hover:text-gray-800'
-                                            }`}
-                                        >
-                                            🤖 AI Assistant
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Reading Tab Content */}
-                            {(condition === 'without_llm' || activeTab === 'reading') && (
+                        <div className="flex-1 flex overflow-hidden">
+                            {condition === 'without_llm' ? (
+                                // Without LLM: Full-width reading
                                 <div className="flex-1 bg-white flex flex-col overflow-hidden">
-                                {/* PDF Content */}
-                                <div
-                                    ref={pdfContainerRef}
-                                    onScroll={handleScroll}
-                                    onMouseUp={handleTextSelection}
-                                    className="flex-1 overflow-y-auto p-8 bg-gray-50"
-                                >
-                                    <div className="max-w-4xl mx-auto bg-white shadow-xl rounded-lg p-12">
-                                        <div 
-                                            id="paper-content"
-                                            className="prose max-w-none"
-                                            dangerouslySetInnerHTML={{ __html: paperContent || '<p>Loading paper...</p>' }}
-                                        />
+                                    <div
+                                        ref={pdfContainerRef}
+                                        onScroll={handleScroll}
+                                        onMouseUp={handleTextSelection}
+                                        className="flex-1 overflow-y-auto p-8 bg-gray-50"
+                                    >
+                                        <div className="max-w-4xl mx-auto bg-white shadow-xl rounded-lg p-12">
+                                            <div
+                                                id="paper-content"
+                                                className="prose max-w-none"
+                                                dangerouslySetInnerHTML={{ __html: paperContent || '<p>Loading paper...</p>' }}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            ) : (
+                                // With LLM: Split screen layout
+                                <>
+                                    {/* Left Panel - Reading */}
+                                    <div
+                                        className={`flex-1 bg-white flex flex-col overflow-hidden transition-all ${
+                                            activeFocus === 'reading' ? 'border-4 border-purple-500' : 'border-4 border-transparent'
+                                        }`}
+                                        onMouseEnter={() => switchFocus('reading')}
+                                    >
+                                        <div
+                                            ref={pdfContainerRef}
+                                            onScroll={handleScroll}
+                                            onMouseUp={handleTextSelection}
+                                            className="flex-1 overflow-y-auto p-8 bg-gray-50"
+                                        >
+                                            <div className="max-w-4xl mx-auto bg-white shadow-xl rounded-lg p-12">
+                                                <div
+                                                    id="paper-content"
+                                                    className="prose max-w-none"
+                                                    dangerouslySetInnerHTML={{ __html: paperContent || '<p>Loading paper...</p>' }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
 
-                            )}
-
-                            {/* AI Assistant Tab Content */}
-                            {condition === 'with_llm' && activeTab === 'ai' && (
+                                    {/* Right Panel - Chat */}
+                                    <div
+                                        className={`flex-1 bg-white flex flex-col overflow-hidden transition-all ${
+                                            activeFocus === 'chat' ? 'border-4 border-purple-500' : 'border-4 border-transparent'
+                                        }`}
+                                        onMouseEnter={() => switchFocus('chat')}
+                                    >
+                            {/* Chat UI Content */}
+                            {condition === 'with_llm' && (
                                 <div className="flex-1 bg-white flex flex-col overflow-hidden">
                                     {/* ChatGPT-style header */}
                                     <div className="px-4 py-3 border-b bg-white flex items-center justify-between">
                                         <div className="flex items-center space-x-2">
                                             <span className="text-xl font-semibold">ChatGPT</span>
-                                            <span className="text-sm text-gray-500">5</span>
+                                            <span className="text-sm text-gray-500">4</span>
                                         </div>
+                                        <button
+                                            onClick={() => {
+                                                if (messages.length > 0 && !window.confirm('새로운 채팅을 시작하시겠습니까? 현재 대화 내용은 유지됩니다.')) {
+                                                    return;
+                                                }
+                                                setMessages([]);
+                                                setInputMessage('');
+                                                logEvent('new_chat_started', { previousMessageCount: messages.length });
+                                            }}
+                                            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex items-center space-x-2"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                            </svg>
+                                            <span>New Chat</span>
+                                        </button>
                                     </div>
 
                                     <div className="flex-1 overflow-y-auto bg-white">
@@ -1571,34 +1661,81 @@
                                             <div className="text-center text-gray-500 mt-12">
                                                 <div className="text-4xl mb-4">💬</div>
                                                 <p className="font-medium">Ask me anything!</p>
+                                                <p className="text-sm mt-2 text-gray-400">논문에 대해 질문하거나 도움을 요청하세요</p>
                                             </div>
                                         ) : (
-                                            messages.map((msg, idx) => (
-                                                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                                    <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                                                        msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-white text-gray-800 shadow-md'
-                                                    }`}>
-                                                        <p className="text-sm">{msg.content}</p>
+                                            <div className="space-y-6 p-4">
+                                                {messages.map((msg, idx) => (
+                                                    <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                                        <div className={`flex items-start space-x-3 max-w-[85%]`}>
+                                                            {msg.role === 'assistant' && (
+                                                                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white font-semibold">
+                                                                    AI
+                                                                </div>
+                                                            )}
+                                                            <div className={`rounded-2xl px-5 py-3 ${
+                                                                msg.role === 'user'
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'bg-gray-100 text-gray-900'
+                                                            }`}>
+                                                                <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                                                            </div>
+                                                            {msg.role === 'user' && (
+                                                                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold">
+                                                                    U
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))
+                                                ))}
+                                                {isLoading && (
+                                                    <div className="flex justify-start">
+                                                        <div className="flex items-start space-x-3 max-w-[85%]">
+                                                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white font-semibold">
+                                                                AI
+                                                            </div>
+                                                            <div className="bg-gray-100 rounded-2xl px-5 py-3">
+                                                                <div className="flex space-x-2">
+                                                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+                                                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+                                                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                <div ref={chatMessagesEndRef} />
+                                            </div>
                                         )}
                                     </div>
 
                                     {/* ChatGPT-style Input Area */}
                                     <div className="p-6 border-t bg-white">
                                         <div className="max-w-3xl mx-auto">
+                                            {/* Attached Files Display */}
+                                            {uploadedFiles.length > 0 && (
+                                                <div className="mb-3 flex flex-wrap gap-2">
+                                                    {uploadedFiles.map((file, idx) => (
+                                                        <div key={idx} className="flex items-center space-x-2 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg text-sm">
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                                            </svg>
+                                                            <span className="font-medium">{file.name}</span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeFile(idx)}
+                                                                className="text-blue-500 hover:text-blue-700 ml-1"
+                                                            >
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
                                             <form onSubmit={handleSendMessage} className="relative">
-                                                {/* Hidden file input */}
-                                                <input
-                                                    ref={fileInputRef}
-                                                    type="file"
-                                                    multiple
-                                                    onChange={handleFileUpload}
-                                                    className="hidden"
-                                                    accept="image/*,.pdf,.doc,.docx,.txt"
-                                                />
-                                                
                                                 <div className="flex items-center border border-gray-300 rounded-3xl bg-gray-50 shadow-sm hover:shadow-md transition-shadow focus-within:border-gray-400">
                                                     {/* Plus Button with Menu */}
                                                     <div className="relative">
@@ -1611,48 +1748,51 @@
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                                             </svg>
                                                         </button>
-                                                        
+
                                                         {/* Plus Menu Popup */}
                                                         {showPlusMenu && (
                                                             <div className="absolute bottom-full left-0 mb-2 w-64 bg-white rounded-lg shadow-2xl border border-gray-200 py-2 z-50">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => fileInputRef.current?.click()}
-                                                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center space-x-3 transition-colors"
-                                                                >
-                                                                    <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                                                                    </svg>
-                                                                    <span className="font-medium text-gray-800">Add photos & files</span>
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        alert('Web search - Coming soon!');
-                                                                        setShowPlusMenu(false);
-                                                                    }}
-                                                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center space-x-3 transition-colors"
-                                                                >
-                                                                    <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                                                    </svg>
-                                                                    <span className="font-medium text-gray-800">Web search</span>
-                                                                </button>
+                                                                {(() => {
+                                                                    const currentPaperData = papers.find(p => p.id === currentPaper);
+                                                                    const hasPDF = currentPaperData && currentPaperData.pdfUrl;
+
+                                                                    return (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={attachCurrentPaperPDF}
+                                                                            disabled={!hasPDF}
+                                                                            className={`w-full px-4 py-3 text-left flex items-center space-x-3 transition-colors ${
+                                                                                hasPDF
+                                                                                    ? 'hover:bg-gray-50 text-gray-800'
+                                                                                    : 'opacity-50 cursor-not-allowed text-gray-400'
+                                                                            }`}
+                                                                        >
+                                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                                                            </svg>
+                                                                            <span className="font-medium">
+                                                                                {hasPDF ? '논문 PDF 첨부' : '논문 PDF 없음'}
+                                                                            </span>
+                                                                        </button>
+                                                                    );
+                                                                })()}
                                                             </div>
                                                         )}
                                                     </div>
-                                                    
+
                                                     {/* Input Field */}
-                                                    <input
-                                                        type="text"
+                                                    <textarea
+                                                        ref={textareaRef}
                                                         value={inputMessage}
-                                                        onChange={(e) => setInputMessage(e.target.value)}
-                                                        onKeyDown={handleTyping}
-                                                        placeholder="Message ChatGPT"
-                                                        className="flex-1 px-4 py-3 bg-transparent focus:outline-none text-gray-900 placeholder-gray-500"
+                                                        onChange={handleTextareaChange}
+                                                        onKeyDown={handleChatKeyDown}
+                                                        placeholder="Message ChatGPT (Shift+Enter for newline)"
+                                                        className="flex-1 px-4 py-3 bg-transparent focus:outline-none text-gray-900 placeholder-gray-500 resize-none overflow-y-auto"
+                                                        style={{maxHeight: '264px', minHeight: '24px', lineHeight: '24px'}}
+                                                        rows={1}
                                                         disabled={isLoading}
                                                     />
-                                                    
+
                                                     {/* Send Button */}
                                                     <button
                                                         type="submit"
@@ -1672,6 +1812,9 @@
                                         </div>
                                     </div>
                                 </div>
+                            )}
+                                    </div>
+                                </>
                             )}
                         </div>
 
