@@ -170,6 +170,10 @@
             // Logging state
             const [events, setEvents] = useState([]);
             const lastEventTime = useRef(Date.now());
+            const unsavedEventsCount = useRef(0); // 저장되지 않은 이벤트 카운터
+            const lastSaveTimestamp = useRef(Date.now()); // 마지막 저장 시간
+            const eventIdCounter = useRef(0); // 고유 ID 생성용 카운터
+            const isSaving = useRef(false); // 저장 중 플래그
             const pdfContainerRef = useRef(null);
             const scrollTimeoutRef = useRef(null);
             const lastActivityTimeRef = useRef(Date.now()); // 마지막 활동 시간 (scroll stop 또는 tab return)
@@ -372,6 +376,46 @@
                 };
             }, []);
 
+            // Auto-save on browser close/refresh
+            useEffect(() => {
+                const handleBeforeUnload = (e) => {
+                    // Save unsaved events before closing
+                    if (phase === 'reading' && unsavedEventsCount.current > 0) {
+                        console.log(`🚨 Saving ${unsavedEventsCount.current} unsaved events before closing...`);
+
+                        // Synchronous save using sendBeacon (more reliable for beforeunload)
+                        const eventsToSave = events.filter(e =>
+                            e.phase === 'reading' &&
+                            (e.eventType === 'scroll_action' ||
+                             e.eventType === 'focus_switch' ||
+                             e.eventType === 'tab_switch' ||
+                             e.eventType === 'llm_activity' ||
+                             e.eventType === 'text_selection')
+                        );
+
+                        if (eventsToSave.length > 0) {
+                            // Try async save first
+                            saveEventsToFirebase(eventsToSave, false).catch(err => {
+                                console.error('Failed to save on unload:', err);
+                            });
+                        }
+                    }
+
+                    // Optional: Show confirmation dialog
+                    if (phase === 'reading' || phase === 'quiz' || phase === 'review') {
+                        e.preventDefault();
+                        e.returnValue = ''; // Chrome requires returnValue to be set
+                        return '';
+                    }
+                };
+
+                window.addEventListener('beforeunload', handleBeforeUnload);
+
+                return () => {
+                    window.removeEventListener('beforeunload', handleBeforeUnload);
+                };
+            }, [phase, events, unsavedEventsCount.current]);
+
             // Auto-scroll chat to bottom when messages change
             useEffect(() => {
                 if (chatMessagesEndRef.current) {
@@ -454,12 +498,102 @@
                 }
             }, [phase, paperContent]);
 
+            // Auto-save events to Firebase
+            const saveEventsToFirebase = async (eventsBatch, isPartialSave = true) => {
+                // 이미 저장 중이면 건너뛰기 (race condition 방지)
+                if (isSaving.current) {
+                    console.log('⏳ Save already in progress, skipping...');
+                    return false;
+                }
+
+                isSaving.current = true;
+
+                try {
+                    if (!window.firebaseDb || !participantId || !sessionId) {
+                        console.warn('⚠️ Firebase not ready for auto-save');
+                        isSaving.current = false;
+                        return false;
+                    }
+
+                    const experimentRef = window.firebaseDoc(
+                        window.firebaseDb,
+                        `users/${participantId}/experiments/${sessionId}`
+                    );
+
+                    // Reading phase의 관련 이벤트만 필터링
+                    const readingEvents = eventsBatch.filter(e =>
+                        e.phase === 'reading' &&
+                        (e.eventType === 'scroll_action' ||
+                         e.eventType === 'focus_switch' ||
+                         e.eventType === 'tab_switch' ||
+                         e.eventType === 'llm_activity' ||
+                         e.eventType === 'text_selection')
+                    );
+
+                    if (readingEvents.length === 0) {
+                        isSaving.current = false;
+                        return true;
+                    }
+
+                    // 기존 데이터 읽어오기
+                    const docSnap = await window.firebaseGetDoc(experimentRef);
+                    const existingEvents = docSnap.exists() && docSnap.data().reading?.events
+                        ? docSnap.data().reading.events
+                        : [];
+
+                    // 중복 방지: eventId (고유) 또는 timestamp+eventType 조합으로 체크
+                    const existingKeys = new Set(
+                        existingEvents.map(e => e.eventId || `${e.timestamp}_${e.eventType}`)
+                    );
+                    const newEventsOnly = readingEvents.filter(e => {
+                        const key = e.eventId || `${e.timestamp}_${e.eventType}`;
+                        return !existingKeys.has(key);
+                    });
+
+                    if (newEventsOnly.length === 0) {
+                        console.log('ℹ️ No new events to save (all already saved)');
+                        unsavedEventsCount.current = 0;
+                        isSaving.current = false;
+                        return true;
+                    }
+
+                    // 병합된 이벤트 배열 (시간순 정렬)
+                    const mergedEvents = [...existingEvents, ...newEventsOnly].sort((a, b) => a.timestamp - b.timestamp);
+
+                    const updateData = {
+                        'reading.events': mergedEvents,
+                        'reading.lastAutoSave': window.firebaseServerTimestamp(),
+                        'reading.totalEvents': mergedEvents.length
+                    };
+
+                    await window.firebaseUpdateDoc(experimentRef, updateData);
+
+                    if (isPartialSave) {
+                        console.log(`💾 Auto-saved ${newEventsOnly.length} new events to Firebase (total: ${mergedEvents.length})`);
+                    }
+
+                    unsavedEventsCount.current = 0;
+                    lastSaveTimestamp.current = Date.now();
+                    isSaving.current = false;
+                    return true;
+                } catch (error) {
+                    console.error('❌ Auto-save failed:', error);
+                    isSaving.current = false;
+                    return false;
+                }
+            };
+
             // Log event
             const logEvent = async (eventType, additionalData = {}) => {
                 const now = Date.now();
                 const timeSinceLast = now - lastEventTime.current;
-                
+
+                // 고유 ID 생성 (세션ID + 카운터)
+                eventIdCounter.current++;
+                const eventId = `${sessionId}_${eventIdCounter.current}`;
+
                 const event = {
+                    eventId,  // 고유 ID 추가
                     timestamp: now,
                     eventType,
                     phase,
@@ -471,7 +605,24 @@
                     ...additionalData
                 };
 
-                setEvents(prev => [...prev, event]);
+                setEvents(prev => {
+                    const newEvents = [...prev, event];
+
+                    // Auto-save 트리거 (20개 이벤트마다)
+                    if (phase === 'reading') {
+                        unsavedEventsCount.current++;
+
+                        if (unsavedEventsCount.current >= 20) {
+                            console.log(`📦 Triggering auto-save (${unsavedEventsCount.current} unsaved events)`);
+                            // async 함수를 await 없이 호출 (의도적 - 백그라운드 저장)
+                            saveEventsToFirebase(newEvents, true).catch(err => {
+                                console.error('Auto-save error:', err);
+                            });
+                        }
+                    }
+
+                    return newEvents;
+                });
                 lastEventTime.current = now;
 
                 // Local storage backup
@@ -487,7 +638,7 @@
                                 window.firebaseDb,
                                 `users/${participantId}/experiments/${sessionId}`
                             );
-                            
+
                             // LLM 메시지는 실시간으로 추가
                             const currentMessages = [...chatHistory];
                             if (eventType === 'llm_answer_received' && additionalData.question) {
@@ -1159,9 +1310,14 @@ Use markdown formatting for better readability:
                     } else {
                         finalClassification = 'scrolling';
                     }
-                    
+
+                    // 고유 ID 생성
+                    eventIdCounter.current++;
+                    const finalEventId = `${sessionId}_${eventIdCounter.current}`;
+
                     // 마지막 이벤트 객체 생성
                     finalEvent = {
+                        eventId: finalEventId,
                         timestamp: now,
                         eventType: 'scroll_action',
                         phase: 'reading',
@@ -1195,7 +1351,12 @@ Use markdown formatting for better readability:
 
                     console.log(`   Final LLM duration: ${finalLLMDuration}ms`);
 
+                    // 고유 ID 생성
+                    eventIdCounter.current++;
+                    const finalEventId = `${sessionId}_${eventIdCounter.current}`;
+
                     finalEvent = {
+                        eventId: finalEventId,
                         timestamp: now,
                         eventType: 'focus_switch',
                         phase: 'reading',
