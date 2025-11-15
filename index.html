@@ -1712,7 +1712,7 @@ Use markdown formatting for better readability:
             // READING GUIDE PHASE
             if (phase === 'reading-guide') {
                 const paper = papers.find(p => p.id === currentPaper);
-                const conditionText = condition === 'with_llm' ? 'Reading with LLM' : 'Reading without LLM';
+                const conditionText = condition === 'with_llm' ? 'Reading with AI' : 'Reading without AI';
 
                 return (
                     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -1727,7 +1727,7 @@ Use markdown formatting for better readability:
                             <div className="space-y-6 mb-8">
                                 <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
                                     <p className="text-sm text-blue-900">
-                                        <strong>조건:</strong> {conditionText}
+                                        <strong>{conditionText}</strong> 
                                     </p>
                                 </div>
 
@@ -2082,17 +2082,17 @@ Use markdown formatting for better readability:
                         <div className="bg-white rounded-2xl shadow-2xl p-12 max-w-3xl w-full">
                             <div className="text-center mb-8">
                                 <div className="text-5xl mb-4">📝</div>
+                                <p className="text-lg text-gray-600">Session {sessionNumber}</p>
                                 <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                                    Session {sessionNumber} - Quiz
+                                     논문 이해도 퀴즈
                                 </h1>
-                                <p className="text-lg text-gray-600">논문 이해도 퀴즈</p>
                             </div>
 
                             <div className="space-y-6 mb-8">
                                 <div className="bg-gray-50 rounded-lg p-6">
                                     <h3 className="font-bold text-lg text-gray-800 mb-2">안내</h3>
                                     <p className="text-gray-700">
-                                        논문에 대한 내용을 기반으로 문제를 해결합니다.
+                                        논문을 읽고 이해한 내용을 바탕으로 질문에 답해주세요. (객관식 5문제, 주관식 5문제)
                                     </p>
                                 </div>
 
@@ -2146,7 +2146,7 @@ Use markdown formatting for better readability:
                         <div className="max-w-4xl mx-auto p-8">
                             <div className="bg-blue-50 border-l-4 border-blue-600 p-4 mb-6">
                                 <p className="text-sm">
-                                    논문을 읽고 이해한 내용을 바탕으로 질문에 답해주세요.
+                                    <strong>안내: </strong>논문을 읽고 이해한 내용을 바탕으로 질문에 답해주세요. (객관식 5문제, 주관식 5문제)
                                 </p>
                             </div>
 
@@ -2242,16 +2242,16 @@ Use markdown formatting for better readability:
                         <div className="bg-white rounded-2xl shadow-2xl p-12 max-w-3xl w-full">
                             <div className="text-center mb-8">
                                 <div className="text-5xl mb-4">✍️</div>
+                                <p className="text-lg text-gray-600">Session {sessionNumber}</p>
                                 <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                                    Session {sessionNumber} - 논문 리뷰 작성
+                                     논문 리뷰 작성
                                 </h1>
                             </div>
-
                             <div className="space-y-6 mb-8">
                                 <div className="bg-gray-50 rounded-lg p-6">
                                     <h3 className="font-bold text-lg text-gray-800 mb-2">안내</h3>
                                     <p className="text-gray-700">
-                                        논문에 대한 리뷰를 작성합니다.
+                                        논문을 읽고 이해한 내용을 바탕으로 리뷰어의 관점에서 논문을 평가해주세요. 각 항목에 대한 글자 수 제한은 없습니다.
                                     </p>
                                 </div>
 
@@ -2322,7 +2322,6 @@ Use markdown formatting for better readability:
                                     </div>
                                     <div className="bg-white rounded-lg shadow-md p-6">
                                         <h3 className="text-xl font-bold mb-4">Rating</h3>
-                                        <p className="mt-6 text-sm text-gray-500">논문</p>
                                         <div className="flex items-center space-x-4">
                                             {[1, 2, 3, 4, 5].map(rating => (
                                                 <button
@@ -2338,8 +2337,6 @@ Use markdown formatting for better readability:
                                                 </button>
                                             ))}
                                         </div>
-                                        <div className="mt-3 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
-                                            <p className="text-sm font-semibold text-gray-800 mb-1">Rating Scale:</p>
                                             <p className="text-xs text-gray-700">
                                                 1 = Strong Reject (매우 부족함) |
                                                 2 = Weak Reject (부족함) |
@@ -2347,12 +2344,11 @@ Use markdown formatting for better readability:
                                                 4 = Weak Accept (좋음) |
                                                 5 = Strong Accept (매우 우수함)
                                             </p>
-                                        </div>
                                     </div>
 
                                     <div className="bg-white rounded-lg shadow-md p-6">
                                         <h3 className="text-lg font-bold mb-3">Strengths</h3>
-                                        <p className="mt-6 text-sm text-gray-500">이 연구의 강점은 무엇입니까?</p>
+                                        <p className="text-gray-500">이 연구의 강점은 무엇입니까?</p>
                                         <textarea
                                             value={reviewData.strengths}
                                             onChange={(e) => handleReviewChange('strengths', e.target.value)}
@@ -2363,7 +2359,7 @@ Use markdown formatting for better readability:
 
                                     <div className="bg-white rounded-lg shadow-md p-6">
                                         <h3 className="text-lg font-bold mb-3">Weaknesses</h3>
-                                        <p className="mt-6 text-sm text-gray-500">이 연구의 주요 약점이나 한계는 무엇입니까?</p>
+                                        <p className="text-gray-500">이 연구의 주요 약점이나 한계는 무엇입니까?</p>
                                         <textarea
                                             value={reviewData.weaknesses}
                                             onChange={(e) => handleReviewChange('weaknesses', e.target.value)}
@@ -2374,7 +2370,7 @@ Use markdown formatting for better readability:
 
                                     <div className="bg-white rounded-lg shadow-md p-6">
                                         <h3 className="text-lg font-bold mb-3">Suggestions for Improvement</h3>
-                                        <p className="mt-6 text-sm text-gray-500">저자들이 이 연구를 어떻게 개선할 수 있을까요?</p>
+                                        <p className="text-gray-500">저자들이 이 연구를 어떻게 개선할 수 있을까요?</p>
                                         <textarea
                                             value={reviewData.suggestions}
                                             onChange={(e) => handleReviewChange('suggestions', e.target.value)}
@@ -2465,7 +2461,7 @@ Use markdown formatting for better readability:
                                 <div className="space-y-2 text-gray-700">
                                     <p>• 참여자: <strong>{participantId}</strong></p>
                                     {mode === 'experiment' && <p>• 세션: <strong>{sessionNumber} / 2</strong></p>}
-                                    <p>• 조건: <strong>{condition === 'with_llm' ? 'AI 지원 O' : 'AI 지원 X'}</strong></p>
+                                    <p>• 조건: <strong>{condition === 'with_llm' ? 'Reading with AI' : 'AI 지원 X'}</strong></p>
                                     <p>• 논문: <strong>{papers.find(p => p.id === currentPaper)?.name}</strong></p>
                                     <p>• 퀴즈 응답: <strong>{Object.keys(quizAnswers).length} / {quizQuestions.length}</strong></p>
                                     <p>• 리뷰 평점: <strong>{reviewData.rating} / 5</strong></p>
@@ -2476,7 +2472,7 @@ Use markdown formatting for better readability:
                             {mode === 'experiment' && sessionNumber === 1 && (
                                 <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
                                     <p className="text-sm text-blue-800">
-                                        <strong>다음:</strong> 2차 세션 ({sessionOrder[1] === 'with_llm' ? 'AI 지원 O' : 'AI 지원 X'})
+                                        <strong>다음:</strong> 2차 세션 ({sessionOrder[1] === 'with_llm' ? 'Reading with AI' : 'Reading without AI'})
                                     </p>
                                 </div>
                             )}
