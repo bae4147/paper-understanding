@@ -898,6 +898,7 @@ Use markdown formatting for better readability:
                         })
                     });
 
+                    
                     if (!response.ok) {
                         const error = await response.json();
                         throw new Error(error.error?.message || 'API request failed');
@@ -1009,7 +1010,8 @@ Use markdown formatting for better readability:
                 html = html.replace(/\*([^\*]+)\*/g, '<em>$1</em>');
                 html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
 
-                // Headers (# text)
+                // Headers (# text) - process from most specific (####) to least specific (#)
+                html = html.replace(/^#### (.+)$/gm, '<h4 style="font-size: 1.05em; font-weight: 600; margin: 10px 0 6px 0;">$1</h4>');
                 html = html.replace(/^### (.+)$/gm, '<h3 style="font-size: 1.1em; font-weight: 600; margin: 12px 0 8px 0;">$1</h3>');
                 html = html.replace(/^## (.+)$/gm, '<h2 style="font-size: 1.2em; font-weight: 600; margin: 12px 0 8px 0;">$1</h2>');
                 html = html.replace(/^# (.+)$/gm, '<h1 style="font-size: 1.3em; font-weight: 600; margin: 12px 0 8px 0;">$1</h1>');
