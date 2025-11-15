@@ -242,7 +242,7 @@
                                         {mode === 'experiment' && (
                                             <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
                                                 <p className="text-sm text-blue-800">
-                                                    <strong>실험 모드:</strong> 두 세션이 자동으로 배정되었습니다. : {sessionOrder.map(c => c === 'with_llm' ? 'AI와 함께 읽기' : 'AI 없이 읽기').join(' → ')}
+                                                    <strong>실험 모드:</strong> 두 세션이 자동으로 배정되었습니다. : {sessionOrder.map(c => c === 'with_llm' ? 'Reading with AI' : 'Reading without AI').join(' → ')}
                                                 </p>
                                             </div>
                                         )}
@@ -252,15 +252,25 @@
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Condition *
                                             </label>
-                                            <select
-                                                value={condition}
-                                                onChange={(e) => setCondition(e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                required
-                                            >
-                                                <option value="without_llm">Without LLM (Control)</option>
-                                                <option value="with_llm">With LLM (Experimental)</option>
-                                            </select>
+                                            <div className="space-y-2">
+                                                {[
+                                                    { value: 'without_llm', label: 'Without LLM (Control)' },
+                                                    { value: 'with_llm', label: 'With LLM (Experimental)' }
+                                                ].map(option => (
+                                                    <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="condition"
+                                                            value={option.value}
+                                                            checked={condition === option.value}
+                                                            onChange={(e) => setCondition(e.target.value)}
+                                                            className="w-4 h-4"
+                                                            required
+                                                        />
+                                                        <span className="text-sm text-gray-700">{option.label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
                                         </div>
                                         )}
 
@@ -297,18 +307,27 @@
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Q1. LLM을 학업용 또는 연구용으로 얼마나 자주 사용하시나요? *
                                             </label>
-                                            <select
-                                                value={llmFrequency}
-                                                onChange={(e) => setLlmFrequency(e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                required
-                                            >
-                                                <option value="">Select...</option>
-                                                <option value="rarely">거의 사용하지 않는다 (거의 매일 0회)</option>
-                                                <option value="1-2-per-week">일주일에 1~2회 정도</option>
-                                                <option value="3-5-per-week">일주일에 3~5회 정도</option>
-                                                <option value="daily">거의 매일 사용한다 (하루 1회 이상)</option>
-                                            </select>
+                                            <div className="space-y-2">
+                                                {[
+                                                    { value: 'rarely', label: '거의 사용하지 않는다 (거의 매일 0회)' },
+                                                    { value: '1-2-per-week', label: '일주일에 1~2회 정도' },
+                                                    { value: '3-5-per-week', label: '일주일에 3~5회 정도' },
+                                                    { value: 'daily', label: '거의 매일 사용한다 (하루 1회 이상)' }
+                                                ].map(option => (
+                                                    <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="llmFrequency"
+                                                            value={option.value}
+                                                            checked={llmFrequency === option.value}
+                                                            onChange={(e) => setLlmFrequency(e.target.value)}
+                                                            className="w-4 h-4"
+                                                            required
+                                                        />
+                                                        <span className="text-sm text-gray-700">{option.label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
                                         </div>
 
                                         <div>
@@ -491,49 +510,76 @@
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Q6. 현재 몇 학기째 재학 중입니까? *
                                             </label>
-                                            <select
-                                                value={semester}
-                                                onChange={(e) => setSemester(e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                required
-                                            >
-                                                <option value="">Select...</option>
-                                                <option value="1">1학기차</option>
-                                                <option value="2">2학기차</option>
-                                                <option value="3+">3학기차 이상</option>
-                                            </select>
+                                            <div className="space-y-2">
+                                                {[
+                                                    { value: '1', label: '1학기차' },
+                                                    { value: '2', label: '2학기차' },
+                                                    { value: '3+', label: '3학기차 이상' }
+                                                ].map(option => (
+                                                    <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="semester"
+                                                            value={option.value}
+                                                            checked={semester === option.value}
+                                                            onChange={(e) => setSemester(e.target.value)}
+                                                            className="w-4 h-4"
+                                                            required
+                                                        />
+                                                        <span className="text-sm text-gray-700">{option.label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
                                         </div>
 
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Q7. HCI 계열 학회나 저널에 1저자로 논문을 제출한 경험이 있습니까? *
                                             </label>
-                                            <select
-                                                value={hasSubmission}
-                                                onChange={(e) => setHasSubmission(e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                required
-                                            >
-                                                <option value="">Select...</option>
-                                                <option value="yes">예 (있음)</option>
-                                                <option value="no">아니오 (없음)</option>
-                                            </select>
+                                            <div className="space-y-2">
+                                                {[
+                                                    { value: 'yes', label: '예 (있음)' },
+                                                    { value: 'no', label: '아니오 (없음)' }
+                                                ].map(option => (
+                                                    <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="hasSubmission"
+                                                            value={option.value}
+                                                            checked={hasSubmission === option.value}
+                                                            onChange={(e) => setHasSubmission(e.target.value)}
+                                                            className="w-4 h-4"
+                                                            required
+                                                        />
+                                                        <span className="text-sm text-gray-700">{option.label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
                                         </div>
 
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Q8. HCI가 아닌 학회나 저널에 1저자로 논문을 제출한 경험이 있습니까? *
                                             </label>
-                                            <select
-                                                value={hasNonHciSubmission}
-                                                onChange={(e) => setHasNonHciSubmission(e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                required
-                                            >
-                                                <option value="">Select...</option>
-                                                <option value="yes">예 (있음)</option>
-                                                <option value="no">아니오 (없음)</option>
-                                            </select>
+                                            <div className="space-y-2">
+                                                {[
+                                                    { value: 'yes', label: '예 (있음)' },
+                                                    { value: 'no', label: '아니오 (없음)' }
+                                                ].map(option => (
+                                                    <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="hasNonHciSubmission"
+                                                            value={option.value}
+                                                            checked={hasNonHciSubmission === option.value}
+                                                            onChange={(e) => setHasNonHciSubmission(e.target.value)}
+                                                            className="w-4 h-4"
+                                                            required
+                                                        />
+                                                        <span className="text-sm text-gray-700">{option.label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -547,17 +593,26 @@
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Q8. 성별을 선택해 주세요. *
                                             </label>
-                                            <select
-                                                value={gender}
-                                                onChange={(e) => setGender(e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                required
-                                            >
-                                                <option value="">Select...</option>
-                                                <option value="male">남성</option>
-                                                <option value="female">여성</option>
-                                                <option value="other">기타 / 응답하지 않음</option>
-                                            </select>
+                                            <div className="space-y-2">
+                                                {[
+                                                    { value: 'male', label: '남성' },
+                                                    { value: 'female', label: '여성' },
+                                                    { value: 'other', label: '기타 / 응답하지 않음' }
+                                                ].map(option => (
+                                                    <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="gender"
+                                                            value={option.value}
+                                                            checked={gender === option.value}
+                                                            onChange={(e) => setGender(e.target.value)}
+                                                            className="w-4 h-4"
+                                                            required
+                                                        />
+                                                        <span className="text-sm text-gray-700">{option.label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
                                         </div>
 
                                         <div>
@@ -578,17 +633,26 @@
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Q10. 현재 교육 수준을 선택해 주세요. *
                                             </label>
-                                            <select
-                                                value={education}
-                                                onChange={(e) => setEducation(e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                required
-                                            >
-                                                <option value="">Select...</option>
-                                                <option value="master-enrolled">석사 재학 중</option>
-                                                <option value="master-graduated">석사 졸업</option>
-                                                <option value="phd-enrolled">박사 재학 중</option>
-                                            </select>
+                                            <div className="space-y-2">
+                                                {[
+                                                    { value: 'master-enrolled', label: '석사 재학 중' },
+                                                    { value: 'master-graduated', label: '석사 졸업' },
+                                                    { value: 'phd-enrolled', label: '박사 재학 중' }
+                                                ].map(option => (
+                                                    <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="education"
+                                                            value={option.value}
+                                                            checked={education === option.value}
+                                                            onChange={(e) => setEducation(e.target.value)}
+                                                            className="w-4 h-4"
+                                                            required
+                                                        />
+                                                        <span className="text-sm text-gray-700">{option.label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -604,7 +668,7 @@
                                 </div>
                             </form>
                         </div>
-                    </div>Pre-Task Survey
+                    </div>
 
                 </div>
             );
