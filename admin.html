@@ -87,10 +87,11 @@
 
             const analyzeClassification = (events) => {
                 if (!events) return null;
-                
+
                 const scrollEvents = events.filter(e => e.eventType === 'scroll_action');
                 const tabSwitchEvents = events.filter(e => e.eventType === 'tab_switch' && e.classification === 'llm');
-                
+                const llmActivityEvents = events.filter(e => e.eventType === 'llm_activity');
+
                 const summary = {
                     reading: { count: 0, duration: 0, sections: new Set() },
                     scanning: { count: 0, duration: 0, sections: new Set() },
@@ -104,10 +105,10 @@
                 scrollEvents.forEach(e => {
                     const cls = e.classification;
                     const section = e.sectionBeforeScroll || e.currentSection || 'Unknown';
-                    
+
                     if (summary[cls]) {
                         summary[cls].count++;
-                        
+
                         // Duration 계산
                         if (cls === 'scrolling') {
                             // Scrolling: pause + scroll motion 모두 포함
@@ -116,13 +117,13 @@
                             // Reading/Scanning: pause만
                             summary[cls].duration += (e.pauseDuration || 0);
                         }
-                        
+
                         summary[cls].sections.add(section);
 
                         if (!sectionMap[section]) {
                             sectionMap[section] = { reading: 0, scanning: 0, scrolling: 0, llm: 0 };
                         }
-                        
+
                         // Section map도 동일하게
                         if (cls === 'scrolling') {
                             sectionMap[section][cls] += ((e.pauseDuration || 0) + (e.scrollDuration || 0));
@@ -132,11 +133,18 @@
                     }
                 });
 
-                // LLM events (tab switches)
+                // LLM events (tab switches - legacy)
                 tabSwitchEvents.forEach(e => {
                     summary.llm.count++;
                     summary.llm.duration += (e.llmDuration || e.timeOnPreviousTab || 0);
                     summary.llm.sections.add('AI Tab'); // LLM은 특정 섹션 없음
+                });
+
+                // LLM activity events (new format)
+                llmActivityEvents.forEach(e => {
+                    summary.llm.count++;
+                    summary.llm.duration += (e.duration || 0);
+                    summary.llm.sections.add('AI Chat'); // LLM은 특정 섹션 없음
                 });
 
                 const totalDuration = summary.reading.duration + summary.scanning.duration + 
@@ -274,8 +282,9 @@
             if (view === 'detail' && selectedExperiment) {
                 const analysis = analyzeClassification(selectedExperiment.events);
                 const scrollEvents = selectedExperiment.events.filter(e => e.eventType === 'scroll_action');
-                const allEvents = selectedExperiment.events || []; // 모든 이벤트 (scroll + tab_switch)
-                
+                const llmActivityEvents = selectedExperiment.events.filter(e => e.eventType === 'llm_activity');
+                const allEvents = selectedExperiment.events || []; // 모든 이벤트 (scroll + tab_switch + llm_activity)
+
                 // Timeline calculation
                 const startEvent = selectedExperiment.events.find(e => e.eventType === 'reading_phase_start' || e.eventType === 'experiment_start');
                 const endEvent = selectedExperiment.events.find(e => e.eventType === 'reading_phase_complete');
@@ -786,11 +795,14 @@
                                                         
                                                         {/* LLM segments */}
                                                         {allEvents
-                                                            .filter(e => e.eventType === 'tab_switch' && e.classification === 'llm')
+                                                            .filter(e =>
+                                                                (e.eventType === 'tab_switch' && e.classification === 'llm') ||
+                                                                e.eventType === 'llm_activity'
+                                                            )
                                                             .map((event, idx) => {
                                                                 const eventTime = event.timestamp - adjustedStartTime;
                                                                 const eventSeconds = eventTime / 1000;
-                                                                const llmDuration = event.llmDuration || event.timeOnPreviousTab || 0;
+                                                                const llmDuration = event.duration || event.llmDuration || event.timeOnPreviousTab || 0;
                                                                 const llmSeconds = llmDuration / 1000;
                                                                 
                                                                 const llmStartSeconds = eventSeconds - llmSeconds;
