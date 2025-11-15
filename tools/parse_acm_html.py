@@ -636,7 +636,7 @@ def generate_clean_html(data, paper_id):
     
     <div class="max-w-4xl mx-auto bg-white shadow-xl rounded-lg p-12">
         <div class="prose max-w-none" id="paper-content">
-            {''.join(content_html)}
+            {chr(10).join(content_html)}
         </div>
     </div>
     

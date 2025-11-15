@@ -270,6 +270,8 @@
                                     const proseDiv = doc.querySelector('.prose');
 
                                     if (proseDiv) {
+                                        console.log('🔍 Extracted HTML contains h3 tags:', proseDiv.innerHTML.includes('<h3'));
+                                        console.log('🔍 Number of h3 tags:', (proseDiv.innerHTML.match(/<h3/g) || []).length);
                                         setPaperContent(proseDiv.innerHTML);
 
                                         // Load quiz questions for this paper
@@ -1201,13 +1203,18 @@ Use markdown formatting for better readability:
                         const proseDiv = doc.querySelector('.prose');
                         
                         if (proseDiv) {
+                            console.log('🔍 [Reading Phase] Extracted HTML contains h3 tags:', proseDiv.innerHTML.includes('<h3'));
+                            console.log('🔍 [Reading Phase] Number of h3 tags:', (proseDiv.innerHTML.match(/<h3/g) || []).length);
                             setPaperContent(proseDiv.innerHTML);
-                            
+
                             // Calculate actual section boundaries from DOM
                             setTimeout(() => {
                                 const sections = document.querySelectorAll('[data-section]');
                                 const container = document.getElementById('paper-content') || document.querySelector('.prose');
-                                
+
+                                console.log('🔍 [Reading Phase] Found sections:', sections.length);
+                                console.log('🔍 [Reading Phase] Section elements:', Array.from(sections).map(s => ({ tag: s.tagName, name: s.getAttribute('data-section') })));
+
                                 if (sections.length > 0 && container) {
                                     const newBoundaries = {};
                                     
