@@ -1720,9 +1720,8 @@ Use markdown formatting for better readability:
                             <div className="text-center mb-8">
                                 <div className="text-5xl mb-4">📖</div>
                                 <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                                    Session {sessionNumber} - Reading
+                                    Session {sessionNumber} - 논문 읽기
                                 </h1>
-                                <p className="text-lg text-gray-600">논문 읽기 세션을 시작합니다</p>
                             </div>
 
                             <div className="space-y-6 mb-8">
@@ -1772,7 +1771,7 @@ Use markdown formatting for better readability:
                         <div className="bg-white shadow-md px-6 py-4 flex items-center justify-between border-b-2 border-gray-200">
                             <div>
                                 <h2 className="text-lg font-bold text-gray-800">
-                                    Phase 1: Reading - {papers.find(p => p.id === currentPaper)?.name}
+                                    [논문 읽기] {papers.find(p => p.id === currentPaper)?.name}
                                 </h2>
                                 <p className="text-sm text-gray-600">
                                     {participantId} | {condition === 'with_llm' ? 'With LLM' : 'Without LLM'} | Section: <strong>{currentSection}</strong>
@@ -2125,8 +2124,8 @@ Use markdown formatting for better readability:
                     <div className="min-h-screen bg-gray-50">
                         <div className="bg-white shadow-md px-6 py-4 border-b-2 flex items-center justify-between">
                             <div>
-                                <h2 className="text-lg font-bold text-gray-800">Phase 2: Comprehension Quiz</h2>
-                                <p className="text-sm text-gray-600">Closed-book | Answer all questions</p>
+                                <h2 className="text-lg font-bold text-gray-800">문제 풀이</h2>
+                                <p className="text-sm text-gray-600">Closed-book</p>
                             </div>
                             <div className="flex items-center space-x-4">
                                 <Timer 
@@ -2147,8 +2146,7 @@ Use markdown formatting for better readability:
                         <div className="max-w-4xl mx-auto p-8">
                             <div className="bg-blue-50 border-l-4 border-blue-600 p-4 mb-6">
                                 <p className="text-sm">
-                                    <strong>Instructions:</strong> Answer the following questions based on your understanding of the paper.
-                                    This is a closed-book test - you cannot refer back to the paper.
+                                    논문을 읽고 이해한 내용을 바탕으로 질문에 답해주세요.
                                 </p>
                             </div>
 
@@ -2245,9 +2243,8 @@ Use markdown formatting for better readability:
                             <div className="text-center mb-8">
                                 <div className="text-5xl mb-4">✍️</div>
                                 <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                                    Session {sessionNumber} - Review
+                                    Session {sessionNumber} - 논문 리뷰 작성
                                 </h1>
-                                <p className="text-lg text-gray-600">논문 리뷰 작성</p>
                             </div>
 
                             <div className="space-y-6 mb-8">
@@ -2286,8 +2283,8 @@ Use markdown formatting for better readability:
                     <div className="h-screen flex flex-col bg-gray-50">
                         <div className="bg-white shadow-md px-6 py-4 border-b-2 flex items-center justify-between flex-shrink-0">
                             <div>
-                                <h2 className="text-lg font-bold text-gray-800">Phase 3: Peer Review Writing</h2>
-                                <p className="text-sm text-gray-600">Open-book | Write a comprehensive review</p>
+                                <h2 className="text-lg font-bold text-gray-800">논문 리뷰 작성</h2>
+                                <p className="text-sm text-gray-600">Open-book</p>
                             </div>
                             <div className="flex items-center space-x-4">
                                 <Timer
@@ -2309,7 +2306,6 @@ Use markdown formatting for better readability:
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-full">
                                 {/* Paper (for reference) */}
                                 <div className="bg-white rounded-lg shadow-md p-6 overflow-y-auto">
-                                    <h3 className="text-xl font-bold mb-4">Paper (Reference)</h3>
                                     <div
                                         className="prose max-w-none"
                                         dangerouslySetInnerHTML={{ __html: paperContent }}
@@ -2319,8 +2315,14 @@ Use markdown formatting for better readability:
                                 {/* Review Form */}
                                 <div className="overflow-y-auto">
                                     <div className="space-y-6">
+                                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                                        <p className="text-sm text-gray-700">
+                                            <strong>안내:</strong> 논문을 읽고 이해한 내용을 바탕으로 리뷰어의 관점에서 논문을 평가해주세요. 각 항목에 대한 글자 수 제한은 없습니다.
+                                        </p>
+                                    </div>
                                     <div className="bg-white rounded-lg shadow-md p-6">
                                         <h3 className="text-xl font-bold mb-4">Rating</h3>
+                                        <p className="mt-6 text-sm text-gray-500">논문</p>
                                         <div className="flex items-center space-x-4">
                                             {[1, 2, 3, 4, 5].map(rating => (
                                                 <button
@@ -2336,45 +2338,51 @@ Use markdown formatting for better readability:
                                                 </button>
                                             ))}
                                         </div>
-                                        <p className="text-sm text-gray-600 mt-2">1 = Strong Reject, 5 = Strong Accept</p>
+                                        <div className="mt-3 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
+                                            <p className="text-sm font-semibold text-gray-800 mb-1">Rating Scale:</p>
+                                            <p className="text-xs text-gray-700">
+                                                1 = Strong Reject (매우 부족함) |
+                                                2 = Weak Reject (부족함) |
+                                                3 = Borderline (보통) |
+                                                4 = Weak Accept (좋음) |
+                                                5 = Strong Accept (매우 우수함)
+                                            </p>
+                                        </div>
                                     </div>
 
                                     <div className="bg-white rounded-lg shadow-md p-6">
                                         <h3 className="text-lg font-bold mb-3">Strengths</h3>
+                                        <p className="mt-6 text-sm text-gray-500">이 연구의 강점은 무엇입니까?</p>
                                         <textarea
                                             value={reviewData.strengths}
                                             onChange={(e) => handleReviewChange('strengths', e.target.value)}
                                             className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="What are the main strengths of this paper?"
+                                            placeholder=""
                                         />
                                     </div>
 
                                     <div className="bg-white rounded-lg shadow-md p-6">
                                         <h3 className="text-lg font-bold mb-3">Weaknesses</h3>
+                                        <p className="mt-6 text-sm text-gray-500">이 연구의 주요 약점이나 한계는 무엇입니까?</p>
                                         <textarea
                                             value={reviewData.weaknesses}
                                             onChange={(e) => handleReviewChange('weaknesses', e.target.value)}
                                             className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="What are the main weaknesses or limitations?"
+                                            placeholder=""
                                         />
                                     </div>
 
                                     <div className="bg-white rounded-lg shadow-md p-6">
                                         <h3 className="text-lg font-bold mb-3">Suggestions for Improvement</h3>
+                                        <p className="mt-6 text-sm text-gray-500">저자들이 이 연구를 어떻게 개선할 수 있을까요?</p>
                                         <textarea
                                             value={reviewData.suggestions}
                                             onChange={(e) => handleReviewChange('suggestions', e.target.value)}
                                             className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="How could the authors improve this work?"
+                                            placeholder=""
                                         />
                                     </div>
 
-                                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                                        <p className="text-sm text-gray-700">
-                                            <strong>Tip:</strong> Your review will be evaluated using the AAC&U Critical Thinking VALUE Rubric.
-                                            Consider: explanation of issues, use of evidence, context & assumptions, your position, and conclusions.
-                                        </p>
-                                    </div>
                                     </div>
                                 </div>
                             </div>
@@ -2445,11 +2453,6 @@ Use markdown formatting for better readability:
                             <h1 className="text-4xl font-bold text-gray-800 mb-4">
                                 {mode === 'experiment' && sessionNumber === 1 ? 'Session 1 종료!' : 'Session 2 종료!'}
                             </h1>
-                            <p className="text-xl text-gray-600 mb-4">
-                                {mode === 'experiment' && sessionNumber === 1
-                                    ? 'Session 1이 종료되었습니다.'
-                                    : 'Session 2가 종료되었습니다.'}
-                            </p>
                             {mode === 'experiment' && sessionNumber === 1 && (
                                 <p className="text-gray-600 mb-8">
                                     다음 세션으로 넘어가기 위해서는 다음 버튼을 눌러주세요.<br/>
@@ -2485,9 +2488,6 @@ Use markdown formatting for better readability:
                                 {mode === 'experiment' && sessionNumber === 1 ? '2차 세션 시작 →' : mode === 'experiment' ? '사후 설문 시작 →' : '데이터 다운로드'}
                             </button>
 
-                            <p className="mt-6 text-sm text-gray-500">
-                                데이터가 안전하게 저장되었습니다.
-                            </p>
                         </div>
                     </div>
                 );
