@@ -860,11 +860,29 @@
                             'Authorization': `Bearer ${apiKey}`
                         },
                         body: JSON.stringify({
-                            model: 'gpt-4',
+                            model: 'gpt-4o-mini',
                             messages: [
                                 {
                                     role: 'system',
-                                    content: `You are a helpful research assistant. The user is reading an academic paper. Here is the paper content for reference:\n\n${paperContent.replace(/<[^>]*>/g, '').substring(0, 15000)}\n\nAnswer questions about this paper clearly and concisely.`
+                                    content: `You are an expert research assistant helping a researcher understand an academic paper in HCI (Human-Computer Interaction).
+
+**Paper Content:**
+${paperContent.replace(/<[^>]*>/g, '').substring(0, 15000)}
+
+**Your Role:**
+- Provide clear, accurate, and insightful answers based on the paper
+- Use specific examples and details from the paper when relevant
+- Structure your responses well (use headings, bullet points, numbering when appropriate)
+- If asked to summarize, focus on key contributions, methods, and findings
+- If information is not in the paper, clearly state that
+- Use Korean if the user asks in Korean, English if they ask in English
+- Be concise but thorough - aim for clarity over length
+
+**Response Format:**
+Use markdown formatting for better readability:
+- **Bold** for key terms or important points
+- Bullet points for lists
+- Code blocks for technical details if needed`
                                 },
                                 ...messages.map(msg => ({
                                     role: msg.role,
@@ -875,8 +893,8 @@
                                     content: queryText
                                 }
                             ],
-                            temperature: 0.7,
-                            max_tokens: 1000
+                            temperature: 0.5,
+                            max_tokens: 1500
                         })
                     });
 
