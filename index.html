@@ -1020,7 +1020,7 @@
                                     content: `You are an expert research assistant helping a researcher understand an academic paper in HCI (Human-Computer Interaction).
 
 **Paper Content:**
-${paperContent.replace(/<[^>]*>/g, '').substring(0, 15000)}
+${paperContent.replace(/<[^>]*>/g, '')}
 
 **Your Role:**
 - Provide clear, accurate, and insightful answers based on the paper
@@ -2131,7 +2131,7 @@ Use markdown formatting for better readability:
                     <div className="min-h-screen bg-gray-50">
                         <div className="bg-white shadow-md px-6 py-4 border-b-2 flex items-center justify-between">
                             <div>
-                                <h2 className="text-lg font-bold text-gray-800">문제 풀이</h2>
+                                <h2 className="text-lg font-bold text-gray-800">Session {sessionNumber} - 문제 풀이</h2>
                                 <p className="text-sm text-gray-600">Closed-book</p>
                             </div>
                             <div className="flex items-center space-x-4">
@@ -2290,7 +2290,7 @@ Use markdown formatting for better readability:
                     <div className="h-screen flex flex-col bg-gray-50">
                         <div className="bg-white shadow-md px-6 py-4 border-b-2 flex items-center justify-between flex-shrink-0">
                             <div>
-                                <h2 className="text-lg font-bold text-gray-800">논문 리뷰 작성</h2>
+                                <h2 className="text-lg font-bold text-gray-800">Session {sessionNumber} - 논문 리뷰 작성</h2>
                                 <p className="text-sm text-gray-600">Open-book</p>
                             </div>
                             <div className="flex items-center space-x-4">
@@ -2354,8 +2354,8 @@ Use markdown formatting for better readability:
                                     </div>
 
                                     <div className="bg-white rounded-lg shadow-md p-6">
-                                        <h3 className="text-lg font-bold mb-3">Strengths</h3>
-                                        <p className="text-gray-500">이 연구의 강점은 무엇입니까?</p>
+                                        <h3 className="text-lg font-bold mb-1">Strengths</h3>
+                                        <p className="text-gray-500 mb-3">이 연구의 강점은 무엇입니까?</p>
                                         <textarea
                                             value={reviewData.strengths}
                                             onChange={(e) => handleReviewChange('strengths', e.target.value)}
@@ -2365,8 +2365,8 @@ Use markdown formatting for better readability:
                                     </div>
 
                                     <div className="bg-white rounded-lg shadow-md p-6">
-                                        <h3 className="text-lg font-bold mb-3">Weaknesses</h3>
-                                        <p className="text-gray-500">이 연구의 주요 약점이나 한계는 무엇입니까?</p>
+                                        <h3 className="text-lg font-bold mb-1">Weaknesses</h3>
+                                        <p className="text-gray-500 mb-3">이 연구의 주요 약점이나 한계는 무엇입니까?</p>
                                         <textarea
                                             value={reviewData.weaknesses}
                                             onChange={(e) => handleReviewChange('weaknesses', e.target.value)}
@@ -2376,8 +2376,8 @@ Use markdown formatting for better readability:
                                     </div>
 
                                     <div className="bg-white rounded-lg shadow-md p-6">
-                                        <h3 className="text-lg font-bold mb-3">Suggestions for Improvement</h3>
-                                        <p className="text-gray-500">저자들이 이 연구를 어떻게 개선할 수 있을까요?</p>
+                                        <h3 className="text-lg font-bold mb-1">Suggestions for Improvement</h3>
+                                        <p className="text-gray-500 mb-3">저자들이 이 연구를 어떻게 개선할 수 있을까요?</p>
                                         <textarea
                                             value={reviewData.suggestions}
                                             onChange={(e) => handleReviewChange('suggestions', e.target.value)}

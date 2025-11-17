@@ -185,7 +185,7 @@
                                     labels: ['Reading', 'Scanning', 'Scrolling'],
                                     datasets: [{
                                         data: [readingTime, scanningTime, scrollingTime],
-                                        backgroundColor: ['#10B981', '#FBBF24', '#3B82F6'],
+                                        backgroundColor: ['#059669', '#34D399', '#A7F3D0'],
                                     }]
                                 },
                                 options: {
@@ -240,17 +240,17 @@
                                         {
                                             label: 'Reading',
                                             data: readingData,
-                                            backgroundColor: '#10B981',
+                                            backgroundColor: '#059669',
                                         },
                                         {
                                             label: 'Scanning',
                                             data: scanningData,
-                                            backgroundColor: '#FBBF24',
+                                            backgroundColor: '#34D399',
                                         },
                                         {
                                             label: 'Scrolling',
                                             data: scrollingData,
-                                            backgroundColor: '#3B82F6',
+                                            backgroundColor: '#A7F3D0',
                                         }
                                     ]
                                 },
@@ -327,88 +327,91 @@
                                     <h2 className="text-xl font-bold mb-6">Reading Pattern Classification</h2>
                                     
                                     {/* Tab Usage Distribution (맨 위, with_llm만) */}
-                                    {selectedExperiment.condition === 'with_llm' && selectedExperiment.reading?.duration && (
-                                        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                                            <h3 className="text-md font-semibold mb-3">Tab Usage Distribution</h3>
-                                            
-                                            {(() => {
-                                                // Reading tab time = Reading + Scanning + Scrolling 행동 시간
-                                                const readingTabTime = analysis.summary.reading.duration + 
-                                                                      analysis.summary.scanning.duration + 
-                                                                      analysis.summary.scrolling.duration;
-                                                // AI tab time = LLM 시간
-                                                const aiTabTime = analysis.summary.llm.duration;
-                                                const totalTime = readingTabTime + aiTabTime;
-                                                
-                                                const readingPercent = totalTime > 0 ? (readingTabTime / totalTime * 100) : 0;
-                                                const aiPercent = totalTime > 0 ? (aiTabTime / totalTime * 100) : 0;
-                                                
-                                                return (
-                                                    <>
-                                                        {/* Horizontal Bar */}
-                                                        <div className="h-12 bg-gray-200 rounded-lg overflow-hidden flex shadow-sm mb-3">
-                                                            <div 
-                                                                className="bg-blue-500 flex items-center justify-center text-white font-semibold transition-all"
-                                                                style={{ width: `${readingPercent}%` }}
-                                                            >
-                                                                {readingPercent > 10 ? `Reading ${readingPercent.toFixed(0)}%` : ''}
-                                                            </div>
-                                                            <div 
-                                                                className="bg-purple-500 flex items-center justify-center text-white font-semibold transition-all"
-                                                                style={{ width: `${aiPercent}%` }}
-                                                            >
-                                                                {aiPercent > 10 ? `AI ${aiPercent.toFixed(0)}%` : ''}
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        {/* Stats */}
-                                                        <div className="grid grid-cols-3 gap-3 text-sm">
-                                                            <div className="text-center">
-                                                                <span className="text-gray-600">Reading Tab: </span>
-                                                                <span className="font-bold text-blue-600">
-                                                                    {(readingTabTime / 1000 / 60).toFixed(1)}m
-                                                                </span>
-                                                                <span className="text-xs text-gray-500 ml-1">
-                                                                    ({readingPercent.toFixed(0)}%)
-                                                                </span>
-                                                            </div>
-                                                            <div className="text-center">
-                                                                <span className="text-gray-600">AI Tab: </span>
-                                                                <span className="font-bold text-purple-600">
-                                                                    {(aiTabTime / 1000 / 60).toFixed(1)}m
-                                                                </span>
-                                                                <span className="text-xs text-gray-500 ml-1">
-                                                                    ({aiPercent.toFixed(0)}%)
-                                                                </span>
-                                                            </div>
-                                                            <div className="text-center">
-                                                                <span className="text-gray-600">Total Session: </span>
-                                                                <span className="font-bold text-gray-700">
-                                                                    {(selectedExperiment.reading.duration / 1000 / 60).toFixed(1)}m
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </>
-                                                );
-                                            })()}
-                                        </div>
-                                    )}
+                                    {(() => {
+                                        console.log('🔍 Condition:', selectedExperiment.condition);
+                                        console.log('🔍 Analysis:', analysis);
+
+                                        // Reading tab time = Reading + Scanning + Scrolling 행동 시간
+                                        const readingTabTime = analysis.summary.reading.duration +
+                                                              analysis.summary.scanning.duration +
+                                                              analysis.summary.scrolling.duration;
+                                        // AI tab time = LLM 시간
+                                        const aiTabTime = analysis.summary.llm.duration;
+                                        const totalTime = readingTabTime + aiTabTime;
+
+                                        console.log('🔍 Reading time:', readingTabTime, 'LLM time:', aiTabTime);
+
+                                        if (totalTime === 0) return null;
+
+                                        const readingPercent = (readingTabTime / totalTime * 100);
+                                        const aiPercent = (aiTabTime / totalTime * 100);
+
+                                        return (
+                                            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                                                <h3 className="text-md font-semibold mb-3">Tab Usage Distribution</h3>
+
+                                                {/* Horizontal Bar */}
+                                                <div className="h-12 bg-gray-200 rounded-lg overflow-hidden flex shadow-sm mb-3">
+                                                    <div
+                                                        className="bg-emerald-500 flex items-center justify-center text-white font-semibold transition-all"
+                                                        style={{ width: `${readingPercent}%` }}
+                                                    >
+                                                        {readingPercent > 10 ? `Reading ${readingPercent.toFixed(0)}%` : ''}
+                                                    </div>
+                                                    <div
+                                                        className="bg-purple-500 flex items-center justify-center text-white font-semibold transition-all"
+                                                        style={{ width: `${aiPercent}%` }}
+                                                    >
+                                                        {aiPercent > 10 ? `AI ${aiPercent.toFixed(0)}%` : ''}
+                                                    </div>
+                                                </div>
+
+                                                {/* Stats */}
+                                                <div className="grid grid-cols-3 gap-3 text-sm">
+                                                    <div className="text-center">
+                                                        <span className="text-gray-600">Reading Tab: </span>
+                                                        <span className="font-bold text-emerald-600">
+                                                            {(readingTabTime / 1000 / 60).toFixed(1)}m
+                                                        </span>
+                                                        <span className="text-xs text-gray-500 ml-1">
+                                                            ({readingPercent.toFixed(0)}%)
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <span className="text-gray-600">AI Tab: </span>
+                                                        <span className="font-bold text-purple-600">
+                                                            {(aiTabTime / 1000 / 60).toFixed(1)}m
+                                                        </span>
+                                                        <span className="text-xs text-gray-500 ml-1">
+                                                            ({aiPercent.toFixed(0)}%)
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <span className="text-gray-600">Total: </span>
+                                                        <span className="font-bold text-gray-700">
+                                                            {(totalTime / 1000 / 60).toFixed(1)}m
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
                                     
                                     {/* Interaction Count Cards */}
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                                        <div className="flex items-center justify-between p-3 bg-green-50 rounded border-l-4 border-green-500">
+                                        <div className="flex items-center justify-between p-3 bg-emerald-50 rounded border-l-4 border-emerald-700">
                                             <span className="font-medium text-sm">Reading</span>
                                             <span className="text-2xl font-bold text-green-600">
                                                 {analysis.summary.reading.count}
                                             </span>
                                         </div>
-                                        <div className="flex items-center justify-between p-3 bg-yellow-50 rounded border-l-4 border-yellow-500">
+                                        <div className="flex items-center justify-between p-3 bg-green-50 rounded border-l-4 border-emerald-500">
                                             <span className="font-medium text-sm">Scanning</span>
                                             <span className="text-2xl font-bold text-yellow-600">
                                                 {analysis.summary.scanning.count}
                                             </span>
                                         </div>
-                                        <div className="flex items-center justify-between p-3 bg-blue-50 rounded border-l-4 border-blue-500">
+                                        <div className="flex items-center justify-between p-3 bg-emerald-50 rounded border-l-4 border-emerald-300">
                                             <span className="font-medium text-sm">Scrolling</span>
                                             <span className="text-2xl font-bold text-blue-600">
                                                 {analysis.summary.scrolling.count}
@@ -715,9 +718,9 @@
                                                             const scrollWidth = Math.max(2, (scrollSeconds / adjustedTotalSeconds) * timelineWidth);
                                                             
                                                             const colorMap = {
-                                                                reading: '#10B981',
-                                                                scanning: '#FBBF24',
-                                                                scrolling: '#3B82F6',
+                                                                reading: '#059669',
+                                                                scanning: '#34D399',
+                                                                scrolling: '#A7F3D0',
                                                                 llm: '#8B5CF6'
                                                             };
                                                             const color = colorMap[event.classification] || '#6B7280';
@@ -858,15 +861,15 @@
                                                         {/* Legend */}
                                                         <div className="absolute top-4 right-4 space-y-1 text-xs bg-white p-2 rounded border shadow-sm">
                                                             <div className="flex items-center">
-                                                                <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
+                                                                <div className="w-3 h-3 bg-emerald-700 rounded mr-2"></div>
                                                                 <span>Reading</span>
                                                             </div>
                                                             <div className="flex items-center">
-                                                                <div className="w-3 h-3 bg-yellow-500 rounded mr-2"></div>
+                                                                <div className="w-3 h-3 bg-emerald-500 rounded mr-2"></div>
                                                                 <span>Scanning</span>
                                                             </div>
                                                             <div className="flex items-center">
-                                                                <div className="w-3 h-3 bg-blue-500 rounded mr-2"></div>
+                                                                <div className="w-3 h-3 bg-emerald-300 rounded mr-2"></div>
                                                                 <span>Scrolling</span>
                                                             </div>
                                                             <div className="flex items-center">
@@ -889,6 +892,94 @@
                             </div>
                             </div>
 
+                            {/* LLM Questions & Answers */}
+                            {(() => {
+                                const llmQuestions = selectedExperiment.events.filter(e =>
+                                    e.eventType === 'llm_question_asked' || e.eventType === 'llm_question_asked_with_files'
+                                );
+                                const llmAnswers = selectedExperiment.events.filter(e => e.eventType === 'llm_answer_received');
+
+                                console.log('🔍 LLM Questions:', llmQuestions);
+                                console.log('🔍 LLM Answers:', llmAnswers);
+
+                                // Match questions with answers
+                                const qaList = llmQuestions.map((q, idx) => {
+                                    const answer = llmAnswers.find(a =>
+                                        Math.abs(a.timestamp - q.timestamp) < 60000 && a.timestamp > q.timestamp
+                                    );
+                                    return {
+                                        index: idx + 1,
+                                        question: q.question,
+                                        questionTime: q.timestamp,
+                                        answer: answer?.answer || 'No answer recorded',
+                                        answerTime: answer?.timestamp,
+                                        responseTime: answer?.responseTime || (answer ? answer.timestamp - q.timestamp : null),
+                                        hasFiles: q.eventType === 'llm_question_asked_with_files',
+                                        fileCount: q.fileCount || 0
+                                    };
+                                });
+
+                                console.log('🔍 QA List:', qaList);
+
+                                return qaList.length > 0 ? (
+                                    <div className="bg-white rounded-lg shadow p-6 mb-6">
+                                        <h2 className="text-xl font-bold mb-4">LLM Questions & Answers ({qaList.length})</h2>
+                                        <div className="space-y-4">
+                                            {qaList.map((qa) => (
+                                                <div key={qa.index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                                    <div className="flex items-center justify-between mb-3">
+                                                        <div className="flex items-center space-x-2">
+                                                            <span className="font-bold text-purple-600">Q{qa.index}</span>
+                                                            {qa.hasFiles && (
+                                                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                                                    📎 {qa.fileCount} file{qa.fileCount > 1 ? 's' : ''}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            {new Date(qa.questionTime).toLocaleTimeString()}
+                                                            {qa.responseTime && (
+                                                                <span className="ml-2 text-purple-600 font-semibold">
+                                                                    ⚡ {(qa.responseTime / 1000).toFixed(2)}s
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="mb-3">
+                                                        <div className="text-sm font-semibold text-gray-700 mb-1">Question:</div>
+                                                        <div className="text-sm bg-white p-3 rounded border border-gray-200">
+                                                            {qa.question}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-sm font-semibold text-gray-700 mb-1">Answer:</div>
+                                                        <div className="text-sm bg-white p-3 rounded border border-gray-200 max-h-48 overflow-y-auto whitespace-pre-wrap">
+                                                            {qa.answer}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="mt-4 p-3 bg-purple-50 rounded-lg text-sm">
+                                            <strong>Summary:</strong> {qaList.length} question{qaList.length > 1 ? 's' : ''} asked
+                                            {qaList.some(qa => qa.responseTime) && (
+                                                <span className="ml-2">
+                                                    • Avg response time: {(
+                                                        qaList.filter(qa => qa.responseTime).reduce((sum, qa) => sum + qa.responseTime, 0) /
+                                                        qaList.filter(qa => qa.responseTime).length / 1000
+                                                    ).toFixed(2)}s
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="bg-white rounded-lg shadow p-6 mb-6">
+                                        <h2 className="text-xl font-bold mb-4">LLM Questions & Answers</h2>
+                                        <p className="text-gray-500">No LLM questions found in this session.</p>
+                                    </div>
+                                );
+                            })()}
+
                             {/* Event Log */}
                             <div className="bg-white rounded-lg shadow p-6">
                                 <h2 className="text-xl font-bold mb-4">Event Log (Chronological)</h2>
@@ -910,18 +1001,18 @@
                                                 .sort((a, b) => a.timestamp - b.timestamp)
                                                 .map((event, idx) => {
                                                     const colorMap = {
-                                                        reading: 'bg-green-50',
-                                                        scanning: 'bg-yellow-50',
-                                                        scrolling: 'bg-blue-50',
+                                                        reading: 'bg-emerald-50',
+                                                        scanning: 'bg-green-50',
+                                                        scrolling: 'bg-emerald-50',
                                                         llm: 'bg-purple-50',
                                                         typing: 'bg-indigo-50',
                                                         'none-typing': 'bg-purple-50'
                                                     };
                                                     
                                                     const badgeColorMap = {
-                                                        reading: 'bg-green-100 text-green-800',
-                                                        scanning: 'bg-yellow-100 text-yellow-800',
-                                                        scrolling: 'bg-blue-100 text-blue-800',
+                                                        reading: 'bg-emerald-700 text-white',
+                                                        scanning: 'bg-emerald-500 text-white',
+                                                        scrolling: 'bg-purple-100 text-purple-800',
                                                         llm: 'bg-purple-100 text-purple-800',
                                                         typing: 'bg-indigo-100 text-indigo-800',
                                                         'none-typing': 'bg-purple-100 text-purple-800'
@@ -1041,7 +1132,7 @@
                                             <td className="px-6 py-4">
                                                 <span className={`px-2 py-1 rounded text-xs ${
                                                     exp.condition === 'with_llm' 
-                                                        ? 'bg-blue-100 text-blue-800' 
+                                                        ? 'bg-purple-100 text-purple-800' 
                                                         : 'bg-gray-100 text-gray-800'
                                                 }`}>
                                                     {exp.condition}
