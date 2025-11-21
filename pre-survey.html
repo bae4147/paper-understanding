@@ -8,7 +8,7 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -31,7 +31,7 @@
             messagingSenderId: "702665730649",
             appId: "1:702665730649:web:9858bde469085a240fdf48"
         };
-        
+
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
@@ -39,8 +39,8 @@
             const [participantId, setParticipantId] = useState('');
             const [condition, setCondition] = useState('without_llm');
             const [currentPaper, setCurrentPaper] = useState('');
-            const [mode, setMode] = useState('experiment'); // 'experiment' or 'test'
-            const [sessionOrder, setSessionOrder] = useState([]); // For experiment mode: randomized order
+            const [mode, setMode] = useState('experiment');
+            const [sessionOrder, setSessionOrder] = useState([]);
 
             // Get parameters from URL
             useEffect(() => {
@@ -53,9 +53,7 @@
                 }
                 setMode(urlMode);
 
-                // If experiment mode, randomize session order
                 if (urlMode === 'experiment') {
-                    // Randomize: ['with_llm', 'without_llm'] or ['without_llm', 'with_llm']
                     const order = Math.random() < 0.5
                         ? ['with_llm', 'without_llm']
                         : ['without_llm', 'with_llm'];
@@ -63,50 +61,61 @@
                     console.log('🎲 Randomized session order:', order);
                 }
             }, []);
-            
-            // Section 3: Demographics
-            const [gender, setGender] = useState('');
+
+            // Section 1: Demographics
             const [age, setAge] = useState('');
-            const [education, setEducation] = useState('');
-            
-            // Section 2: Research Experience
+            const [gender, setGender] = useState('');
             const [major, setMajor] = useState('');
-            const [semester, setSemester] = useState('');
-            const [hasSubmission, setHasSubmission] = useState('');
-            const [hasNonHciSubmission, setHasNonHciSubmission] = useState('');
-            
-            // Section 1: LLM Usage
+            const [education, setEducation] = useState('');
+
+            // Section 2: Academic Experience
+            const [researchYears, setResearchYears] = useState('');
+            const [publicationExperience, setPublicationExperience] = useState('');
+            const [publicationCount, setPublicationCount] = useState('');
+            const [reviewExperience, setReviewExperience] = useState('');
+            const [reviewCount, setReviewCount] = useState('');
+            const [paperReadingFrequency, setPaperReadingFrequency] = useState('');
+
+            // Section 3: LLM Usage - General
             const [llmFrequency, setLlmFrequency] = useState('');
             const [llmPurpose, setLlmPurpose] = useState([]);
             const [llmPurposeOther, setLlmPurposeOther] = useState('');
-
-            // For each purpose, store trust and usefulness ratings
             const [llmPurposeRatings, setLlmPurposeRatings] = useState({});
-            // Structure: { 'Reading papers': { trust: '3', usefulness: '3' }, ... }
 
-            // Use papers from shared data file
+            // Section 3: LLM Usage - Paper Reading Specific
+            const [llmPaperReadingFrequency, setLlmPaperReadingFrequency] = useState('');
+            const [llmPaperReadingMethods, setLlmPaperReadingMethods] = useState([]);
+            const [llmPaperReadingMethodsOther, setLlmPaperReadingMethodsOther] = useState('');
+
             const papers = AVAILABLE_PAPERS;
 
             const llmPurposeOptions = [
-                'Reading papers',
-                'Writing papers',
-                'Coding',
-                'Brainstorming',
-                'Learning new concepts',
-                'Other'
+                '요약 (Summarization)',
+                '번역 (Translation)',
+                '코딩 도움 (Code debugging, generation)',
+                '아이디어 생성 (Ideation, brainstorming)',
+                '논문 읽기 (Paper reading)',
+                '글쓰기 지원 (Writing assistance)'
+            ];
+
+            const paperReadingMethodOptions = [
+                '논문 전체 요약',
+                '특정 섹션(Abstract, Method, Results 등) 요약',
+                '어려운 개념/용어 설명',
+                '방법론 이해',
+                '실험 결과 해석',
+                '관련 논문 찾기'
             ];
 
             const handleLlmPurposeToggle = (purpose) => {
                 setLlmPurpose(prev => {
                     const isSelected = prev.includes(purpose);
                     if (isSelected) {
-                        // Remove purpose and its ratings
                         const newRatings = { ...llmPurposeRatings };
                         delete newRatings[purpose];
                         setLlmPurposeRatings(newRatings);
                         return prev.filter(p => p !== purpose);
                     } else {
-                        // Add purpose with no default ratings
                         setLlmPurposeRatings(prev => ({
                             ...prev,
                             [purpose]: { trust: '', usefulness: '' }
@@ -126,15 +135,34 @@
                 }));
             };
 
+            const handlePaperReadingMethodToggle = (method) => {
+                setLlmPaperReadingMethods(prev => {
+                    if (prev.includes(method)) {
+                        return prev.filter(m => m !== method);
+                    } else {
+                        return [...prev, method];
+                    }
+                });
+            };
+
             const handleSubmit = async (e) => {
                 e.preventDefault();
-                
+
                 // Validation
-                // In experiment mode, currentPaper is not required (fixed assignment)
-                // In test mode, currentPaper must be selected
-                if (!participantId || (mode === 'test' && !currentPaper) || !gender || !age || !education ||
-                    !major || !semester || !hasSubmission || !hasNonHciSubmission || !llmFrequency) {
+                if (!participantId || (mode === 'test' && !currentPaper) || !age || !gender || !major || !education ||
+                    !researchYears || !publicationExperience || !reviewExperience || !paperReadingFrequency ||
+                    !llmFrequency || !llmPaperReadingFrequency) {
                     alert('Please fill in all required fields (*)');
+                    return;
+                }
+
+                // Additional validation for conditional fields
+                if (publicationExperience === 'published' && !publicationCount) {
+                    alert('게재 경험이 있는 경우 논문 편수를 입력해주세요.');
+                    return;
+                }
+                if (reviewExperience === 'yes' && !reviewCount) {
+                    alert('리뷰 경험이 있는 경우 리뷰 횟수를 입력해주세요.');
                     return;
                 }
 
@@ -145,30 +173,37 @@
                     mode,
                     sessionOrder: mode === 'experiment' ? sessionOrder : null,
                     demographics: {
-                        gender,
                         age: parseInt(age),
+                        gender,
+                        major,
                         education
                     },
-                    researchExperience: {
-                        major,
-                        semester,
-                        hasHciSubmissionExperience: hasSubmission === 'yes',
-                        hasNonHciSubmissionExperience: hasNonHciSubmission === 'yes'
+                    academicExperience: {
+                        researchYears,
+                        publicationExperience,
+                        publicationCount: publicationExperience === 'published' ? parseInt(publicationCount) : null,
+                        reviewExperience: reviewExperience === 'yes',
+                        reviewCount: reviewExperience === 'yes' ? parseInt(reviewCount) : null,
+                        paperReadingFrequency
                     },
                     llmUsage: {
-                        frequency: llmFrequency,
+                        generalFrequency: llmFrequency,
                         purposes: llmPurpose.map(purpose => ({
                             name: purpose,
-                            otherText: purpose === 'Other' ? llmPurposeOther : null,
+                            otherText: purpose === '기타' ? llmPurposeOther : null,
                             trust: parseInt(llmPurposeRatings[purpose]?.trust || 3),
                             usefulness: parseInt(llmPurposeRatings[purpose]?.usefulness || 3)
+                        })),
+                        paperReadingFrequency: llmPaperReadingFrequency,
+                        paperReadingMethods: llmPaperReadingMethods.map(method => ({
+                            name: method,
+                            otherText: method === '기타' ? llmPaperReadingMethodsOther : null
                         }))
                     },
                     surveyCompletedAt: new Date().toISOString()
                 };
 
                 try {
-                    // Save to Firebase
                     const docRef = db.collection('users').doc(participantId);
                     await docRef.set({
                         participantId,
@@ -182,19 +217,16 @@
 
                     console.log('✅ Pre-survey saved');
 
-                    // Navigate to experiment
                     if (mode === 'experiment') {
-                        // Start with first session - fixed paper assignment
                         const params = new URLSearchParams({
                             participantId,
                             mode: 'experiment',
                             condition: sessionOrder[0],
-                            paper: 'chi2025-lbw-02', // Fixed paper for session 1
+                            paper: 'chi2025-lbw-02',
                             sessionNumber: '1'
                         });
                         window.location.href = `index.html?${params.toString()}`;
                     } else {
-                        // Test mode: use selected condition
                         const params = new URLSearchParams({
                             participantId,
                             mode: 'test',
@@ -223,7 +255,7 @@
                                 {/* Experiment Setup */}
                                 <div className="border-b pb-6">
                                     <h2 className="text-xl font-bold text-gray-800 mb-4">Experiment Information</h2>
-                                    
+
                                     <div className="space-y-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -242,28 +274,101 @@
                                         {mode === 'experiment' && (
                                             <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
                                                 <p className="text-sm text-blue-800">
-                                                    <strong>실험 모드:</strong> 두 세션이 자동으로 배정되었습니다. : {sessionOrder.map(c => c === 'with_llm' ? 'Reading with AI' : 'Reading without AI').join(' → ')}
+                                                    <strong>실험 모드:</strong> 두 세션이 자동으로 배정되었습니다: {sessionOrder.map(c => c === 'with_llm' ? 'Reading with AI' : 'Reading without AI').join(' → ')}
                                                 </p>
                                             </div>
                                         )}
 
                                         {mode === 'test' && (
+                                        <>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Condition *
+                                                </label>
+                                                <div className="space-y-2">
+                                                    {[
+                                                        { value: 'without_llm', label: 'Without LLM (Control)' },
+                                                        { value: 'with_llm', label: 'With LLM (Experimental)' }
+                                                    ].map(option => (
+                                                        <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                            <input
+                                                                type="radio"
+                                                                name="condition"
+                                                                value={option.value}
+                                                                checked={condition === option.value}
+                                                                onChange={(e) => setCondition(e.target.value)}
+                                                                className="w-4 h-4"
+                                                                required
+                                                            />
+                                                            <span className="text-sm text-gray-700">{option.label}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Select Paper *
+                                                </label>
+                                                <div className="space-y-2">
+                                                    {papers.map(paper => (
+                                                        <label key={paper.id} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                            <input
+                                                                type="radio"
+                                                                name="paper"
+                                                                value={paper.id}
+                                                                checked={currentPaper === paper.id}
+                                                                onChange={(e) => setCurrentPaper(e.target.value)}
+                                                                className="w-4 h-4"
+                                                                required
+                                                            />
+                                                            <span className="text-sm text-gray-700">{paper.name}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Section 1: Demographics */}
+                                <div className="border-b pb-6">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Section 1. Demographic Information</h2>
+
+                                    <div className="space-y-4">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Condition *
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                나이 (만) *
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={age}
+                                                onChange={(e) => setAge(e.target.value)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                placeholder="예: 25"
+                                                required
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                성별 *
                                             </label>
                                             <div className="space-y-2">
                                                 {[
-                                                    { value: 'without_llm', label: 'Without LLM (Control)' },
-                                                    { value: 'with_llm', label: 'With LLM (Experimental)' }
+                                                    { value: 'male', label: '남성' },
+                                                    { value: 'female', label: '여성' },
+                                                    { value: 'non-binary', label: '논바이너리' },
+                                                    { value: 'prefer-not-to-say', label: '답변하고 싶지 않음' }
                                                 ].map(option => (
                                                     <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
                                                         <input
                                                             type="radio"
-                                                            name="condition"
+                                                            name="gender"
                                                             value={option.value}
-                                                            checked={condition === option.value}
-                                                            onChange={(e) => setCondition(e.target.value)}
+                                                            checked={gender === option.value}
+                                                            onChange={(e) => setGender(e.target.value)}
                                                             className="w-4 h-4"
                                                             required
                                                         />
@@ -272,47 +377,213 @@
                                                 ))}
                                             </div>
                                         </div>
-                                        )}
 
-                                        {/* Only show paper selection in test mode */}
-                                        {mode === 'test' && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Select Paper *
-                                            </label>
-                                            <select
-                                                value={currentPaper}
-                                                onChange={(e) => setCurrentPaper(e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                required
-                                            >
-                                                <option value="">Choose a paper...</option>
-                                                {papers.map(paper => (
-                                                    <option key={paper.id} value={paper.id}>
-                                                        {paper.name}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Section 1: LLM Usage */}
-                                <div className="border-b pb-6">
-                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Section 1. LLM Usage</h2>
-                                    
-                                    <div className="space-y-6">
                                         <div>
                                             <label className="block text-sm font-bold text-gray-800 mb-2">
-                                                Q1. LLM을 학업용 또는 연구용으로 얼마나 자주 사용하시나요? *
+                                                전공 분야 *
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={major}
+                                                onChange={(e) => setMajor(e.target.value)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                placeholder="예: 컴퓨터공학, 데이터사이언스"
+                                                required
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                교육 수준 *
                                             </label>
                                             <div className="space-y-2">
                                                 {[
-                                                    { value: 'rarely', label: '거의 사용하지 않는다 (거의 매일 0회)' },
-                                                    { value: '1-2-per-week', label: '일주일에 1~2회 정도' },
-                                                    { value: '3-5-per-week', label: '일주일에 3~5회 정도' },
-                                                    { value: 'daily', label: '거의 매일 사용한다 (하루 1회 이상)' }
+                                                    { value: 'bachelor-enrolled', label: '학사 재학' },
+                                                    { value: 'bachelor-graduated', label: '학사 졸업' },
+                                                    { value: 'master-enrolled', label: '석사 재학' },
+                                                    { value: 'master-graduated', label: '석사 졸업' },
+                                                    { value: 'phd-enrolled', label: '박사 재학' },
+                                                    { value: 'phd-graduated', label: '박사 졸업' }
+                                                ].map(option => (
+                                                    <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="education"
+                                                            value={option.value}
+                                                            checked={education === option.value}
+                                                            onChange={(e) => setEducation(e.target.value)}
+                                                            className="w-4 h-4"
+                                                            required
+                                                        />
+                                                        <span className="text-sm text-gray-700">{option.label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Section 2: Academic Experience */}
+                                <div className="border-b pb-6">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Section 2. Academic Experience</h2>
+
+                                    <div className="space-y-6">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                연구 경력: HCI 또는 관련 분야(CS, Data Science, Information Science 등)에서 연구를 시작한 지 얼마나 되셨나요? *
+                                            </label>
+                                            <div className="space-y-2">
+                                                {[
+                                                    { value: '<1', label: '1년 미만' },
+                                                    { value: '1-2', label: '1년 이상 ~ 2년 미만' },
+                                                    { value: '2-3', label: '2년 이상 ~ 3년 미만' },
+                                                    { value: '3+', label: '3년 이상' }
+                                                ].map(option => (
+                                                    <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="researchYears"
+                                                            value={option.value}
+                                                            checked={researchYears === option.value}
+                                                            onChange={(e) => setResearchYears(e.target.value)}
+                                                            className="w-4 h-4"
+                                                            required
+                                                        />
+                                                        <span className="text-sm text-gray-700">{option.label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                논문 작성 경험: HCI 분야의 Peer-reviewed venue(학회/저널)에 1저자로 논문을 제출하거나 게재한 경험이 있나요? *
+                                            </label>
+                                            <div className="space-y-2">
+                                                {[
+                                                    { value: 'none', label: '없음' },
+                                                    { value: 'submitted', label: '제출 경험만 있음' },
+                                                    { value: 'published', label: '게재 경험 있음' }
+                                                ].map(option => (
+                                                    <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="publicationExperience"
+                                                            value={option.value}
+                                                            checked={publicationExperience === option.value}
+                                                            onChange={(e) => setPublicationExperience(e.target.value)}
+                                                            className="w-4 h-4"
+                                                            required
+                                                        />
+                                                        <span className="text-sm text-gray-700">{option.label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                            {publicationExperience === 'published' && (
+                                                <div className="mt-3 ml-6">
+                                                    <label className="block text-xs font-medium text-gray-600 mb-2">
+                                                        게재 경험이 있다면 대략 몇 편인가요?
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        value={publicationCount}
+                                                        onChange={(e) => setPublicationCount(e.target.value)}
+                                                        className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                        placeholder="편수"
+                                                        min="1"
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                논문 리뷰 경험: HCI 분야의 학회나 저널에서 peer reviewer로 논문을 리뷰한 경험이 있나요? *
+                                            </label>
+                                            <div className="space-y-2">
+                                                {[
+                                                    { value: 'no', label: '없음' },
+                                                    { value: 'yes', label: '있음' }
+                                                ].map(option => (
+                                                    <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="reviewExperience"
+                                                            value={option.value}
+                                                            checked={reviewExperience === option.value}
+                                                            onChange={(e) => setReviewExperience(e.target.value)}
+                                                            className="w-4 h-4"
+                                                            required
+                                                        />
+                                                        <span className="text-sm text-gray-700">{option.label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                            {reviewExperience === 'yes' && (
+                                                <div className="mt-3 ml-6">
+                                                    <label className="block text-xs font-medium text-gray-600 mb-2">
+                                                        리뷰 경험이 있다면 대략 몇 회 정도인가요?
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        value={reviewCount}
+                                                        onChange={(e) => setReviewCount(e.target.value)}
+                                                        className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                        placeholder="횟수"
+                                                        min="1"
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                논문 읽기 빈도: 평소 학술 논문을 얼마나 자주 읽으시나요? *
+                                            </label>
+                                            <div className="space-y-2">
+                                                {[
+                                                    { value: 'rarely', label: '거의 읽지 않음' },
+                                                    { value: 'monthly-1-2', label: '월 1-2편' },
+                                                    { value: 'weekly-1-2', label: '주 1-2편' },
+                                                    { value: 'weekly-3+', label: '주 3편 이상' }
+                                                ].map(option => (
+                                                    <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="paperReadingFrequency"
+                                                            value={option.value}
+                                                            checked={paperReadingFrequency === option.value}
+                                                            onChange={(e) => setPaperReadingFrequency(e.target.value)}
+                                                            className="w-4 h-4"
+                                                            required
+                                                        />
+                                                        <span className="text-sm text-gray-700">{option.label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Section 3: LLM Usage */}
+                                <div className="border-b pb-6">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Section 3. LLM Usage</h2>
+
+                                    {/* General LLM Usage */}
+                                    <div className="space-y-6 mb-8">
+                                        <h3 className="text-lg font-semibold text-gray-700 border-b pb-2">학술 활동에서의 LLM 사용</h3>
+
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                지난 1개월간 LLM을 학업용 또는 연구용으로 얼마나 자주 사용하셨나요? *
+                                            </label>
+                                            <div className="space-y-2">
+                                                {[
+                                                    { value: 'none', label: '사용하지 않음' },
+                                                    { value: 'monthly-1-2', label: '월 1-2회' },
+                                                    { value: 'monthly-3-4', label: '월 3-4회' },
+                                                    { value: 'weekly-2-3', label: '주 2-3회' },
+                                                    { value: 'daily', label: '거의 매일 (주 5회 이상)' }
                                                 ].map(option => (
                                                     <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
                                                         <input
@@ -331,13 +602,11 @@
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-800 mb-2">
-                                                Q2. 주로 어떤 목적으로 LLM을 사용하시나요? (복수 선택 가능)
+                                            <label className="block text-sm font-bold text-gray-800 mb-3">
+                                                주로 어떤 목적으로 LLM을 사용하시나요? (복수 선택 가능)
                                             </label>
                                             <div className="space-y-4">
-                                                {['요약(summarization)', '번역(translation)', '코딩 도움(code debugging, generation)',
-                                                  '아이디어 생성(ideation, brainstorming)', '논문 읽기 / 정리 (paper reading / note-taking)',
-                                                  '글쓰기 지원(writing assistance)'].map(purpose => (
+                                                {llmPurposeOptions.map(purpose => (
                                                     <div key={purpose} className="border-l-2 border-gray-200 pl-4">
                                                         <label className="flex items-center space-x-2 mb-3">
                                                             <input
@@ -353,36 +622,10 @@
                                                             <div className="ml-6 space-y-3 bg-gray-50 p-3 rounded">
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-gray-600 mb-2">
-                                                                        이 목적으로 사용할 때 LLM의 답변을 신뢰하십니까?
+                                                                        Usefulness: 이 목적으로 LLM을 사용할 때, LLM이 얼마나 유용했나요?
                                                                     </label>
                                                                     <div className="flex items-center justify-between">
-                                                                        <span className="text-xs text-gray-400">전혀 신뢰하지 않는다</span>
-                                                                        <div className="flex space-x-1">
-                                                                            {[1, 2, 3, 4, 5].map(value => (
-                                                                                <button
-                                                                                    key={value}
-                                                                                    type="button"
-                                                                                    onClick={() => handlePurposeRatingChange(purpose, 'trust', value.toString())}
-                                                                                    className={`w-8 h-8 rounded-full text-xs font-bold transition-colors ${
-                                                                                        llmPurposeRatings[purpose]?.trust === value.toString()
-                                                                                            ? 'bg-blue-600 text-white'
-                                                                                            : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
-                                                                                    }`}
-                                                                                >
-                                                                                    {value}
-                                                                                </button>
-                                                                            ))}
-                                                                        </div>
-                                                                        <span className="text-xs text-gray-400">매우 신뢰한다</span>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-gray-600 mb-2">
-                                                                        이 목적으로 사용할 때 LLM이 학습이나 연구에 도움이 된다고 생각하십니까?
-                                                                    </label>
-                                                                    <div className="flex items-center justify-between">
-                                                                        <span className="text-xs text-gray-400">전혀 도움이 되지 않는다</span>
+                                                                        <span className="text-xs text-gray-400">전혀 유용하지 않음</span>
                                                                         <div className="flex space-x-1">
                                                                             {[1, 2, 3, 4, 5].map(value => (
                                                                                 <button
@@ -399,7 +642,33 @@
                                                                                 </button>
                                                                             ))}
                                                                         </div>
-                                                                        <span className="text-xs text-gray-400">매우 도움이 된다</span>
+                                                                        <span className="text-xs text-gray-400">매우 유용함</span>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div>
+                                                                    <label className="block text-xs font-medium text-gray-600 mb-2">
+                                                                        Trust: 이 목적으로 LLM을 사용할 때, LLM의 결과를 얼마나 신뢰하시나요?
+                                                                    </label>
+                                                                    <div className="flex items-center justify-between">
+                                                                        <span className="text-xs text-gray-400">전혀 신뢰하지 않음</span>
+                                                                        <div className="flex space-x-1">
+                                                                            {[1, 2, 3, 4, 5].map(value => (
+                                                                                <button
+                                                                                    key={value}
+                                                                                    type="button"
+                                                                                    onClick={() => handlePurposeRatingChange(purpose, 'trust', value.toString())}
+                                                                                    className={`w-8 h-8 rounded-full text-xs font-bold transition-colors ${
+                                                                                        llmPurposeRatings[purpose]?.trust === value.toString()
+                                                                                            ? 'bg-blue-600 text-white'
+                                                                                            : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                                                    }`}
+                                                                                >
+                                                                                    {value}
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                        <span className="text-xs text-gray-400">매우 신뢰함</span>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -430,36 +699,10 @@
                                                         <div className="ml-6 space-y-3 bg-gray-50 p-3 rounded">
                                                             <div>
                                                                 <label className="block text-xs font-medium text-gray-600 mb-2">
-                                                                    이 목적으로 사용할 때 LLM의 답변을 신뢰하십니까?
+                                                                    Usefulness: 이 목적으로 LLM을 사용할 때, LLM이 얼마나 유용했나요?
                                                                 </label>
                                                                 <div className="flex items-center justify-between">
-                                                                    <span className="text-xs text-gray-400">전혀 신뢰하지 않는다</span>
-                                                                    <div className="flex space-x-1">
-                                                                        {[1, 2, 3, 4, 5].map(value => (
-                                                                            <button
-                                                                                key={value}
-                                                                                type="button"
-                                                                                onClick={() => handlePurposeRatingChange('기타', 'trust', value.toString())}
-                                                                                className={`w-8 h-8 rounded-full text-xs font-bold transition-colors ${
-                                                                                    llmPurposeRatings['기타']?.trust === value.toString()
-                                                                                        ? 'bg-blue-600 text-white'
-                                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
-                                                                                }`}
-                                                                            >
-                                                                                {value}
-                                                                            </button>
-                                                                        ))}
-                                                                    </div>
-                                                                    <span className="text-xs text-gray-400">매우 신뢰한다</span>
-                                                                </div>
-                                                            </div>
-
-                                                            <div>
-                                                                <label className="block text-xs font-medium text-gray-600 mb-2">
-                                                                    이 목적으로 사용할 때 LLM이 학습이나 연구에 도움이 된다고 생각하십니까?
-                                                                </label>
-                                                                <div className="flex items-center justify-between">
-                                                                    <span className="text-xs text-gray-400">전혀 도움이 되지 않는다</span>
+                                                                    <span className="text-xs text-gray-400">전혀 유용하지 않음</span>
                                                                     <div className="flex space-x-1">
                                                                         {[1, 2, 3, 4, 5].map(value => (
                                                                             <button
@@ -476,7 +719,33 @@
                                                                             </button>
                                                                         ))}
                                                                     </div>
-                                                                    <span className="text-xs text-gray-400">매우 도움이 된다</span>
+                                                                    <span className="text-xs text-gray-400">매우 유용함</span>
+                                                                </div>
+                                                            </div>
+
+                                                            <div>
+                                                                <label className="block text-xs font-medium text-gray-600 mb-2">
+                                                                    Trust: 이 목적으로 LLM을 사용할 때, LLM의 결과를 얼마나 신뢰하시나요?
+                                                                </label>
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-xs text-gray-400">전혀 신뢰하지 않음</span>
+                                                                    <div className="flex space-x-1">
+                                                                        {[1, 2, 3, 4, 5].map(value => (
+                                                                            <button
+                                                                                key={value}
+                                                                                type="button"
+                                                                                onClick={() => handlePurposeRatingChange('기타', 'trust', value.toString())}
+                                                                                className={`w-8 h-8 rounded-full text-xs font-bold transition-colors ${
+                                                                                    llmPurposeRatings['기타']?.trust === value.toString()
+                                                                                        ? 'bg-blue-600 text-white'
+                                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                                                }`}
+                                                                            >
+                                                                                {value}
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                    <span className="text-xs text-gray-400">매우 신뢰함</span>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -485,44 +754,30 @@
                                             </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                {/* Section 2: Research Experience */}
-                                <div className="border-b pb-6">
-                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Section 2. Research Experience</h2>
-                                    
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-800 mb-2">
-                                                Q5. 현재 소속된 전공은 무엇입니까? *
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={major}
-                                                onChange={(e) => setMajor(e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                placeholder="예: 컴퓨터공학, 데이터사이언스"
-                                                required
-                                            />
-                                        </div>
+                                    {/* Paper Reading Specific LLM Usage */}
+                                    <div className="space-y-6 pt-6 border-t">
+                                        <h3 className="text-lg font-semibold text-gray-700 border-b pb-2">논문 읽기에서의 LLM 사용</h3>
 
                                         <div>
                                             <label className="block text-sm font-bold text-gray-800 mb-2">
-                                                Q6. 현재 몇 학기째 재학 중입니까? *
+                                                지난 1개월간 논문을 읽을 때 LLM을 얼마나 자주 사용하셨나요? *
                                             </label>
                                             <div className="space-y-2">
                                                 {[
-                                                    { value: '1', label: '1학기차' },
-                                                    { value: '2', label: '2학기차' },
-                                                    { value: '3+', label: '3학기차 이상' }
+                                                    { value: 'none', label: '사용하지 않음' },
+                                                    { value: 'monthly-1-2', label: '월 1-2회' },
+                                                    { value: 'monthly-3-4', label: '월 3-4회' },
+                                                    { value: 'weekly-2-3', label: '주 2-3회' },
+                                                    { value: 'daily', label: '거의 매일 (주 5회 이상)' }
                                                 ].map(option => (
                                                     <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
                                                         <input
                                                             type="radio"
-                                                            name="semester"
+                                                            name="llmPaperReadingFrequency"
                                                             value={option.value}
-                                                            checked={semester === option.value}
-                                                            onChange={(e) => setSemester(e.target.value)}
+                                                            checked={llmPaperReadingFrequency === option.value}
+                                                            onChange={(e) => setLlmPaperReadingFrequency(e.target.value)}
                                                             className="w-4 h-4"
                                                             required
                                                         />
@@ -532,128 +787,44 @@
                                             </div>
                                         </div>
 
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-800 mb-2">
-                                                Q7. HCI 계열 학회나 저널에 1저자로 논문을 제출한 경험이 있습니까? *
-                                            </label>
-                                            <div className="space-y-2">
-                                                {[
-                                                    { value: 'yes', label: '예 (있음)' },
-                                                    { value: 'no', label: '아니오 (없음)' }
-                                                ].map(option => (
-                                                    <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                        {llmPaperReadingFrequency && llmPaperReadingFrequency !== 'none' && (
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                    논문 읽기/정리 시 주로 LLM을 어떻게 활용하셨나요? (복수 선택 가능)
+                                                </label>
+                                                <div className="space-y-2">
+                                                    {paperReadingMethodOptions.map(method => (
+                                                        <label key={method} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={llmPaperReadingMethods.includes(method)}
+                                                                onChange={() => handlePaperReadingMethodToggle(method)}
+                                                                className="w-4 h-4"
+                                                            />
+                                                            <span className="text-sm text-gray-700">{method}</span>
+                                                        </label>
+                                                    ))}
+                                                    <div className="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg">
                                                         <input
-                                                            type="radio"
-                                                            name="hasSubmission"
-                                                            value={option.value}
-                                                            checked={hasSubmission === option.value}
-                                                            onChange={(e) => setHasSubmission(e.target.value)}
-                                                            className="w-4 h-4"
-                                                            required
+                                                            type="checkbox"
+                                                            checked={llmPaperReadingMethods.includes('기타')}
+                                                            onChange={() => handlePaperReadingMethodToggle('기타')}
+                                                            className="w-4 h-4 mt-1"
                                                         />
-                                                        <span className="text-sm text-gray-700">{option.label}</span>
-                                                    </label>
-                                                ))}
+                                                        <div className="flex-1">
+                                                            <span className="text-sm font-medium text-gray-700">기타:</span>
+                                                            <input
+                                                                type="text"
+                                                                value={llmPaperReadingMethodsOther}
+                                                                onChange={(e) => setLlmPaperReadingMethodsOther(e.target.value)}
+                                                                className="w-full mt-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                                                                placeholder="직접 입력"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-800 mb-2">
-                                                Q8. HCI가 아닌 학회나 저널에 1저자로 논문을 제출한 경험이 있습니까? *
-                                            </label>
-                                            <div className="space-y-2">
-                                                {[
-                                                    { value: 'yes', label: '예 (있음)' },
-                                                    { value: 'no', label: '아니오 (없음)' }
-                                                ].map(option => (
-                                                    <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
-                                                        <input
-                                                            type="radio"
-                                                            name="hasNonHciSubmission"
-                                                            value={option.value}
-                                                            checked={hasNonHciSubmission === option.value}
-                                                            onChange={(e) => setHasNonHciSubmission(e.target.value)}
-                                                            className="w-4 h-4"
-                                                            required
-                                                        />
-                                                        <span className="text-sm text-gray-700">{option.label}</span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Section 3: Demographics */}
-                                <div className="border-b pb-6">
-                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Section 3. Demographics</h2>
-                                    
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-800 mb-2">
-                                                Q8. 성별을 선택해 주세요. *
-                                            </label>
-                                            <div className="space-y-2">
-                                                {[
-                                                    { value: 'male', label: '남성' },
-                                                    { value: 'female', label: '여성' },
-                                                    { value: 'other', label: '기타 / 응답하지 않음' }
-                                                ].map(option => (
-                                                    <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
-                                                        <input
-                                                            type="radio"
-                                                            name="gender"
-                                                            value={option.value}
-                                                            checked={gender === option.value}
-                                                            onChange={(e) => setGender(e.target.value)}
-                                                            className="w-4 h-4"
-                                                            required
-                                                        />
-                                                        <span className="text-sm text-gray-700">{option.label}</span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-800 mb-2">
-                                                Q9. 나이를 입력해 주세요. *
-                                            </label>
-                                            <input
-                                                type="number"
-                                                value={age}
-                                                onChange={(e) => setAge(e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                placeholder="예: 25"
-                                                required
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-800 mb-2">
-                                                Q10. 현재 교육 수준을 선택해 주세요. *
-                                            </label>
-                                            <div className="space-y-2">
-                                                {[
-                                                    { value: 'master-enrolled', label: '석사 재학 중' },
-                                                    { value: 'master-graduated', label: '석사 졸업' },
-                                                    { value: 'phd-enrolled', label: '박사 재학 중' }
-                                                ].map(option => (
-                                                    <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
-                                                        <input
-                                                            type="radio"
-                                                            name="education"
-                                                            value={option.value}
-                                                            checked={education === option.value}
-                                                            onChange={(e) => setEducation(e.target.value)}
-                                                            className="w-4 h-4"
-                                                            required
-                                                        />
-                                                        <span className="text-sm text-gray-700">{option.label}</span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        </div>
+                                        )}
                                     </div>
                                 </div>
 

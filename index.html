@@ -2425,24 +2425,17 @@ Use markdown formatting for better readability:
 
             // COMPLETE PHASE
             if (phase === 'complete') {
-                // Handle experiment mode: transition to next session or post-survey
+                // Handle experiment mode: transition to post-survey after each session
                 const handleComplete = () => {
                     if (mode === 'experiment') {
-                        if (sessionNumber === 1) {
-                            // Move to session 2 with fixed paper assignment
-                            const nextCondition = sessionOrder[1];
-                            const params = new URLSearchParams({
-                                participantId,
-                                mode: 'experiment',
-                                condition: nextCondition,
-                                paper: 'chi2025-lbw-03', // Fixed paper for session 2
-                                sessionNumber: '2'
-                            });
-                            window.location.href = `index.html?${params.toString()}`;
-                        } else {
-                            // Go to post-survey
-                            window.location.href = `post-survey.html?participantId=${encodeURIComponent(participantId)}`;
-                        }
+                        // Always go to post-survey after completing a session
+                        const params = new URLSearchParams({
+                            participantId,
+                            condition,
+                            sessionNumber: sessionNumber.toString(),
+                            mode: 'experiment'
+                        });
+                        window.location.href = `post-survey.html?${params.toString()}`;
                     } else {
                         // Test mode: just export data
                         exportData();
@@ -2454,14 +2447,11 @@ Use markdown formatting for better readability:
                         <div className="bg-white rounded-xl shadow-2xl p-12 max-w-2xl w-full text-center">
                             <div className="text-6xl mb-6">🎉</div>
                             <h1 className="text-4xl font-bold text-gray-800 mb-4">
-                                {mode === 'experiment' && sessionNumber === 1 ? 'Session 1 종료!' : 'Session 2 종료!'}
+                                {mode === 'experiment' ? `Session ${sessionNumber} 종료!` : '실험 종료!'}
                             </h1>
-                            {mode === 'experiment' && sessionNumber === 1 && (
-                                <p className="text-gray-600 mb-8">
-                                    다음 세션으로 넘어가기 위해서는 다음 버튼을 눌러주세요.<br/>
-                                    필요시 휴식을 취하실 수 있습니다.
-                                </p>
-                            )}
+                            <p className="text-gray-600 mb-8">
+                                세션 {sessionNumber}에 대한 사후 설문을 진행해주세요.
+                            </p>
 
 {/* <div className="bg-gray-50 rounded-lg p-6 mb-8 text-left">
                                 <h3 className="font-bold text-lg mb-4">요약</h3>
@@ -2476,19 +2466,11 @@ Use markdown formatting for better readability:
                                 </div>
                             </div> */}
 
-                            {mode === 'experiment' && sessionNumber === 1 && (
-                                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
-                                    <p className="text-sm text-blue-800">
-                                        <strong>다음:</strong> 2차 세션 ({sessionOrder[1] === 'with_llm' ? 'Reading with AI' : 'Reading without AI'})
-                                    </p>
-                                </div>
-                            )}
-
                             <button
                                 onClick={handleComplete}
-                                className="px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-lg font-medium"
+                                className="px-8 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 text-lg font-medium"
                             >
-                                {mode === 'experiment' && sessionNumber === 1 ? '2차 세션 시작 →' : mode === 'experiment' ? '사후 설문 시작 →' : '데이터 다운로드'}
+                                {mode === 'experiment' ? '사후 설문 시작 →' : '데이터 다운로드'}
                             </button>
 
                         </div>

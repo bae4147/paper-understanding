@@ -8,7 +8,7 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -28,7 +28,7 @@
             messagingSenderId: "702665730649",
             appId: "1:702665730649:web:9858bde469085a240fdf48"
         };
-        
+
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
@@ -37,28 +37,49 @@
             const urlParams = new URLSearchParams(window.location.search);
             const participantId = urlParams.get('participantId');
             const condition = urlParams.get('condition');
-            const sessionId = urlParams.get('sessionId');
+            const sessionNumber = urlParams.get('sessionNumber');
+            const mode = urlParams.get('mode');
 
-            // Task Experience
-            const [taskDifficulty, setTaskDifficulty] = useState('');
-            const [taskEngagement, setTaskEngagement] = useState('');
-            const [taskConfidence, setTaskConfidence] = useState('');
-            const [taskSatisfaction, setTaskSatisfaction] = useState('');
+            // Section 1: NASA-TLX (7-point scale)
+            const [mentalDemand, setMentalDemand] = useState('');
+            const [physicalDemand, setPhysicalDemand] = useState('');
+            const [temporalDemand, setTemporalDemand] = useState('');
+            const [performance, setPerformance] = useState('');
+            const [effort, setEffort] = useState('');
+            const [frustration, setFrustration] = useState('');
 
-            // LLM Usage (only for with_llm condition)
-            const [llmHelpfulness, setLlmHelpfulness] = useState('');
-            const [llmTrust, setLlmTrust] = useState('');
-            const [llmInfluence, setLlmInfluence] = useState('');
-            const [llmAdvantages, setLlmAdvantages] = useState('');
-            const [llmDisadvantages, setLlmDisadvantages] = useState('');
-            
-            // Overall Feedback
-            const [strategies, setStrategies] = useState('');
-            const [challenges, setChallenges] = useState('');
-            const [improvements, setImprovements] = useState('');
-            const [additionalComments, setAdditionalComments] = useState('');
+            // Section 2: Self-efficacy (7-point scale)
+            // Overall Paper Comprehension
+            const [overallComprehension, setOverallComprehension] = useState('');
+            const [researchQuestionUnderstanding, setResearchQuestionUnderstanding] = useState('');
+            const [methodologyUnderstanding, setMethodologyUnderstanding] = useState('');
+            const [resultsUnderstanding, setResultsUnderstanding] = useState('');
 
-            // Bank Account for compensation
+            // Quiz Confidence
+            const [quizConfidence, setQuizConfidence] = useState('');
+
+            // Review Confidence
+            const [ratingConfidence, setRatingConfidence] = useState('');
+            const [strengthsConfidence, setStrengthsConfidence] = useState('');
+            const [weaknessesConfidence, setWeaknessesConfidence] = useState('');
+            const [suggestionsConfidence, setSuggestionsConfidence] = useState('');
+
+            // Section 3: LLM Usefulness (only for with_llm condition, 7-point scale)
+            const [llmOverallUsefulness, setLlmOverallUsefulness] = useState('');
+            const [llmConceptHelp, setLlmConceptHelp] = useState('');
+            const [llmMethodologyHelp, setLlmMethodologyHelp] = useState('');
+            const [llmResultsHelp, setLlmResultsHelp] = useState('');
+            const [llmTimeSaving, setLlmTimeSaving] = useState('');
+
+            // Section 4: LLM Trust (only for with_llm condition, 7-point scale)
+            const [llmCompetence, setLlmCompetence] = useState('');
+            const [llmAccuracy, setLlmAccuracy] = useState('');
+            const [llmBenevolence, setLlmBenevolence] = useState('');
+            const [llmReliability, setLlmReliability] = useState('');
+            const [llmComfortActing, setLlmComfortActing] = useState('');
+            const [llmComfortUsing, setLlmComfortUsing] = useState('');
+
+            // Bank Account (only for 2nd session)
             const [bankAccount, setBankAccount] = useState('');
 
             useEffect(() => {
@@ -71,56 +92,126 @@
             const handleSubmit = async (e) => {
                 e.preventDefault();
 
-                // Validate bank account
-                if (!bankAccount.trim()) {
+                // Validation for required fields
+                if (!mentalDemand || !physicalDemand || !temporalDemand || !performance || !effort || !frustration ||
+                    !overallComprehension || !researchQuestionUnderstanding || !methodologyUnderstanding || !resultsUnderstanding ||
+                    !quizConfidence ||
+                    !ratingConfidence || !strengthsConfidence || !weaknessesConfidence || !suggestionsConfidence) {
+                    alert('모든 필수 항목을 응답해주세요.');
+                    return;
+                }
+
+                // Validate LLM questions if with_llm condition
+                if (condition === 'with_llm') {
+                    if (!llmOverallUsefulness || !llmConceptHelp || !llmMethodologyHelp || !llmResultsHelp || !llmTimeSaving ||
+                        !llmCompetence || !llmAccuracy || !llmBenevolence || !llmReliability || !llmComfortActing || !llmComfortUsing) {
+                        alert('LLM 관련 질문에 모두 응답해주세요.');
+                        return;
+                    }
+                }
+
+                // Validate bank account for 2nd session
+                if (sessionNumber === '2' && !bankAccount.trim()) {
                     alert('사례 지급을 위한 계좌 정보를 입력해주세요.');
                     return;
                 }
 
                 const surveyData = {
-                    taskExperience: {
-                        difficulty: parseInt(taskDifficulty),
-                        engagement: parseInt(taskEngagement),
-                        confidence: parseInt(taskConfidence),
-                        satisfaction: parseInt(taskSatisfaction)
+                    nasaTLX: {
+                        mentalDemand: parseInt(mentalDemand),
+                        physicalDemand: parseInt(physicalDemand),
+                        temporalDemand: parseInt(temporalDemand),
+                        performance: parseInt(performance),
+                        effort: parseInt(effort),
+                        frustration: parseInt(frustration)
                     },
-                    overallFeedback: {
-                        strategies,
-                        challenges,
-                        improvements,
-                        additionalComments
+                    selfEfficacy: {
+                        overallComprehension: {
+                            overall: parseInt(overallComprehension),
+                            researchQuestion: parseInt(researchQuestionUnderstanding),
+                            methodology: parseInt(methodologyUnderstanding),
+                            results: parseInt(resultsUnderstanding)
+                        },
+                        quizConfidence: parseInt(quizConfidence),
+                        reviewConfidence: {
+                            rating: parseInt(ratingConfidence),
+                            strengths: parseInt(strengthsConfidence),
+                            weaknesses: parseInt(weaknessesConfidence),
+                            suggestions: parseInt(suggestionsConfidence)
+                        }
                     },
-                    bankAccount: bankAccount.trim(),
                     surveyCompletedAt: new Date().toISOString()
                 };
 
                 // Add LLM-specific questions if condition is with_llm
                 if (condition === 'with_llm') {
-                    surveyData.llmUsage = {
-                        helpfulness: parseInt(llmHelpfulness),
-                        trust: parseInt(llmTrust),
-                        influence: parseInt(llmInfluence),
-                        advantages: llmAdvantages,
-                        disadvantages: llmDisadvantages
+                    surveyData.llmUsefulness = {
+                        overall: parseInt(llmOverallUsefulness),
+                        conceptHelp: parseInt(llmConceptHelp),
+                        methodologyHelp: parseInt(llmMethodologyHelp),
+                        resultsHelp: parseInt(llmResultsHelp),
+                        timeSaving: parseInt(llmTimeSaving)
                     };
+                    surveyData.llmTrust = {
+                        competence: parseInt(llmCompetence),
+                        accuracy: parseInt(llmAccuracy),
+                        benevolence: parseInt(llmBenevolence),
+                        reliability: parseInt(llmReliability),
+                        comfortActing: parseInt(llmComfortActing),
+                        comfortUsing: parseInt(llmComfortUsing)
+                    };
+                }
+
+                // Add bank account if 2nd session
+                if (sessionNumber === '2') {
+                    surveyData.bankAccount = bankAccount.trim();
                 }
 
                 try {
                     // Update Firebase with post-survey data
                     const userRef = db.collection('users').doc(participantId);
-                    await userRef.update({
-                        postSurvey: surveyData,
-                        completedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
 
-                    console.log('✅ Post-survey saved');
+                    // Store post-survey for specific session
+                    const updateData = {};
+                    updateData[`postSurvey_session${sessionNumber}`] = surveyData;
 
-                    // Show completion message
-                    alert('Thank you for completing the survey! You may now close this window.');
-                    
+                    // If 2nd session, mark as completed
+                    if (sessionNumber === '2') {
+                        updateData.completedAt = firebase.firestore.FieldValue.serverTimestamp();
+                    }
+
+                    await userRef.update(updateData);
+
+                    console.log(`✅ Post-survey for session ${sessionNumber} saved`);
+
+                    // Navigate based on session number
+                    if (sessionNumber === '1') {
+                        // After 1st session, go to 2nd session
+                        // Get sessionOrder from Firestore
+                        const userDoc = await userRef.get();
+                        const userData = userDoc.data();
+                        const sessionOrder = userData.sessionOrder;
+
+                        const nextCondition = sessionOrder[1]; // 2nd session condition
+
+                        const params = new URLSearchParams({
+                            participantId,
+                            mode,
+                            condition: nextCondition,
+                            paper: 'chi2025-lbw-03', // 2nd paper
+                            sessionNumber: '2'
+                        });
+
+                        alert('첫 번째 세션이 완료되었습니다. 잠시 후 두 번째 세션이 시작됩니다.');
+                        window.location.href = `index.html?${params.toString()}`;
+                    } else {
+                        // After 2nd session, show completion
+                        alert('모든 실험이 완료되었습니다! 참여해주셔서 감사합니다.');
+                    }
+
                 } catch (error) {
                     console.error('Error saving post-survey:', error);
-                    alert('Failed to save survey. Please try again.');
+                    alert('설문 저장에 실패했습니다. 다시 시도해주세요.');
                 }
             };
 
@@ -132,339 +223,777 @@
                 );
             }
 
+            const isWithLLM = condition === 'with_llm';
+
             return (
                 <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-100 py-8 px-4">
                     <div className="max-w-3xl mx-auto">
                         <div className="bg-white rounded-xl shadow-2xl p-8">
                             {/* Header */}
                             <div className="text-center mb-8">
-                                <div className="text-5xl mb-4">🎉</div>
-                                <h1 className="text-3xl font-bold text-gray-800 mb-2">사후 설문</h1>
-                                <p className="text-gray-600">실험에 참여해주셔서 감사합니다!</p>
-                                <p className="text-sm text-gray-500 mt-2">참가자: {participantId} | 조건: {condition === 'with_llm' ? 'AI 지원 O' : 'AI 지원 X'}</p>
+                                <div className="text-5xl mb-4">📝</div>
+                                <h1 className="text-3xl font-bold text-gray-800 mb-2">Post-Task Survey</h1>
+                                <p className="text-gray-600">세션 {sessionNumber} 사후 설문</p>
+                                <p className="text-sm text-gray-500 mt-2">
+                                    참가자: {participantId} | 조건: {isWithLLM ? 'LLM 사용' : 'LLM 미사용'}
+                                </p>
                             </div>
 
                             <form onSubmit={handleSubmit} className="space-y-8">
-                                {/* Section A: Cognitive Load */}
+                                {/* Section 1: NASA-TLX */}
                                 <div className="border-b pb-6">
-                                    <h2 className="text-xl font-bold text-gray-800 mb-2">Section A. 인지 부하 (Cognitive Load)</h2>
-                                    <p className="text-sm text-gray-600 mb-4">논문을 읽는 과정에서 느낀 난이도, 집중도, 부담감 등을 평가합니다.</p>
-
-                                    <div className="bg-blue-50 border-l-4 border-blue-500 p-3 mb-4 text-xs text-gray-700">
-                                        <strong>척도:</strong> 1 = 전혀 그렇지 않다 | 2 = 그렇지 않은 편이다 | 3 = 보통이다 | 4 = 그렇다 | 5 = 매우 그렇다
-                                    </div>
+                                    <h2 className="text-xl font-bold text-gray-800 mb-2">Section 1. NASA-TLX</h2>
+                                    <p className="text-sm text-gray-600 mb-4">방금 완료한 논문 읽기 과제에 대해 평가해주세요.</p>
 
                                     <div className="space-y-6">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-3">
-                                                1. LLM을 사용할 때 논문을 이해하는 것이 더 쉬웠다.
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                Mental Demand (정신적 요구): 논문을 읽는 동안 얼마나 많은 정신적 활동이 필요했나요?
                                             </label>
+                                            <p className="text-xs text-gray-600 mb-3">(예: 생각하기, 결정하기, 이해하기, 기억하기 등)</p>
                                             <div className="flex items-center justify-between">
-                                                <span className="text-xs text-gray-500">전혀 그렇지 않다</span>
-                                                <div className="flex space-x-2">
-                                                    {[1, 2, 3, 4, 5].map(value => (
+                                                <span className="text-xs text-gray-500">매우 낮음</span>
+                                                <div className="flex space-x-1">
+                                                    {[1, 2, 3, 4, 5, 6, 7].map(value => (
                                                         <button
                                                             key={value}
                                                             type="button"
-                                                            onClick={() => setTaskDifficulty(value.toString())}
-                                                            className={`w-12 h-12 rounded-full font-bold transition-colors ${
-                                                                taskDifficulty === value.toString()
+                                                            onClick={() => setMentalDemand(value.toString())}
+                                                            className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                mentalDemand === value.toString()
                                                                     ? 'bg-blue-600 text-white'
-                                                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
                                                             }`}
                                                         >
                                                             {value}
                                                         </button>
                                                     ))}
                                                 </div>
-                                                <span className="text-xs text-gray-500">매우 그렇다</span>
+                                                <span className="text-xs text-gray-500">매우 높음</span>
                                             </div>
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-3">
-                                                2. LLM이 복잡한 개념이나 문장을 해석하는 데 도움이 되었다.
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                Physical Demand (신체적 요구): 논문을 읽는 동안 얼마나 많은 신체적 활동이 필요했나요?
                                             </label>
+                                            <p className="text-xs text-gray-600 mb-3">(예: 클릭하기, 스크롤하기, 타이핑하기 등)</p>
                                             <div className="flex items-center justify-between">
-                                                <span className="text-xs text-gray-500">전혀 그렇지 않다</span>
-                                                <div className="flex space-x-2">
-                                                    {[1, 2, 3, 4, 5].map(value => (
+                                                <span className="text-xs text-gray-500">매우 낮음</span>
+                                                <div className="flex space-x-1">
+                                                    {[1, 2, 3, 4, 5, 6, 7].map(value => (
                                                         <button
                                                             key={value}
                                                             type="button"
-                                                            onClick={() => setTaskEngagement(value.toString())}
-                                                            className={`w-12 h-12 rounded-full font-bold transition-colors ${
-                                                                taskEngagement === value.toString()
+                                                            onClick={() => setPhysicalDemand(value.toString())}
+                                                            className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                physicalDemand === value.toString()
                                                                     ? 'bg-blue-600 text-white'
-                                                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
                                                             }`}
                                                         >
                                                             {value}
                                                         </button>
                                                     ))}
                                                 </div>
-                                                <span className="text-xs text-gray-500">매우 그렇다</span>
+                                                <span className="text-xs text-gray-500">매우 높음</span>
                                             </div>
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-3">
-                                                3. LLM 없이 읽을 때는 집중을 유지하기 더 어려웠다.
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                Temporal Demand (시간적 압박): 논문을 읽는 동안 시간적 압박을 얼마나 느꼈나요?
                                             </label>
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-xs text-gray-500">전혀 그렇지 않다</span>
-                                                <div className="flex space-x-2">
-                                                    {[1, 2, 3, 4, 5].map(value => (
+                                            <div className="flex items-center justify-between mt-3">
+                                                <span className="text-xs text-gray-500">매우 낮음</span>
+                                                <div className="flex space-x-1">
+                                                    {[1, 2, 3, 4, 5, 6, 7].map(value => (
                                                         <button
                                                             key={value}
                                                             type="button"
-                                                            onClick={() => setTaskConfidence(value.toString())}
-                                                            className={`w-12 h-12 rounded-full font-bold transition-colors ${
-                                                                taskConfidence === value.toString()
+                                                            onClick={() => setTemporalDemand(value.toString())}
+                                                            className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                temporalDemand === value.toString()
                                                                     ? 'bg-blue-600 text-white'
-                                                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
                                                             }`}
                                                         >
                                                             {value}
                                                         </button>
                                                     ))}
                                                 </div>
-                                                <span className="text-xs text-gray-500">매우 그렇다</span>
+                                                <span className="text-xs text-gray-500">매우 높음</span>
                                             </div>
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-3">
-                                                4. LLM을 사용했을 때 정보량이 많아도 부담이 적었다.
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                Performance (성과): 논문을 이해하는 과제를 얼마나 잘 수행했다고 생각하시나요?
                                             </label>
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-xs text-gray-500">전혀 그렇지 않다</span>
-                                                <div className="flex space-x-2">
-                                                    {[1, 2, 3, 4, 5].map(value => (
+                                            <div className="flex items-center justify-between mt-3">
+                                                <span className="text-xs text-gray-500">매우 못함</span>
+                                                <div className="flex space-x-1">
+                                                    {[1, 2, 3, 4, 5, 6, 7].map(value => (
                                                         <button
                                                             key={value}
                                                             type="button"
-                                                            onClick={() => setTaskSatisfaction(value.toString())}
-                                                            className={`w-12 h-12 rounded-full font-bold transition-colors ${
-                                                                taskSatisfaction === value.toString()
+                                                            onClick={() => setPerformance(value.toString())}
+                                                            className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                performance === value.toString()
                                                                     ? 'bg-blue-600 text-white'
-                                                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
                                                             }`}
                                                         >
                                                             {value}
                                                         </button>
                                                     ))}
                                                 </div>
-                                                <span className="text-xs text-gray-500">매우 그렇다</span>
+                                                <span className="text-xs text-gray-500">매우 잘함</span>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                Effort (노력): 논문을 읽고 이해하기 위해 얼마나 열심히 노력해야 했나요?
+                                            </label>
+                                            <div className="flex items-center justify-between mt-3">
+                                                <span className="text-xs text-gray-500">매우 낮음</span>
+                                                <div className="flex space-x-1">
+                                                    {[1, 2, 3, 4, 5, 6, 7].map(value => (
+                                                        <button
+                                                            key={value}
+                                                            type="button"
+                                                            onClick={() => setEffort(value.toString())}
+                                                            className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                effort === value.toString()
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                            }`}
+                                                        >
+                                                            {value}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <span className="text-xs text-gray-500">매우 높음</span>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                Frustration (좌절감): 논문을 읽는 동안 얼마나 불안하고, 스트레스받고, 짜증나고, 좌절감을 느꼈나요?
+                                            </label>
+                                            <div className="flex items-center justify-between mt-3">
+                                                <span className="text-xs text-gray-500">매우 낮음</span>
+                                                <div className="flex space-x-1">
+                                                    {[1, 2, 3, 4, 5, 6, 7].map(value => (
+                                                        <button
+                                                            key={value}
+                                                            type="button"
+                                                            onClick={() => setFrustration(value.toString())}
+                                                            className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                frustration === value.toString()
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                            }`}
+                                                        >
+                                                            {value}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <span className="text-xs text-gray-500">매우 높음</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Section B & C: LLM Usage (only for with_llm condition) */}
-                                {condition === 'with_llm' && (
-                                    <div className="border-b pb-6">
-                                        <h2 className="text-xl font-bold text-gray-800 mb-2">Section B. 유용성 (Usefulness) & Section C. 신뢰와 만족도 (Trust & Satisfaction)</h2>
-                                        <p className="text-sm text-gray-600 mb-4">LLM이 논문 읽기 이해와 사고 수준 향상에 얼마나 도움을 주었는지 평가합니다.</p>
+                                {/* Section 2: Self-efficacy */}
+                                <div className="border-b pb-6">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4">Section 2. Self-efficacy</h2>
+
+                                    {/* Overall Paper Comprehension */}
+                                    <div className="mb-6">
+                                        <h3 className="text-lg font-semibold text-gray-700 mb-3">1. Overall Paper Comprehension (전반적 논문 이해도)</h3>
+                                        <p className="text-sm text-gray-600 mb-4">읽은 논문에 대한 스스로의 이해도를 평가하는 항목입니다.</p>
 
                                         <div className="space-y-6">
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-3">
-                                                    1. LLM은 논문의 주요 개념이나 용어를 쉽게 이해하도록 도와주었다.
+                                                <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                    방금 읽은 논문을 전반적으로 얼마나 잘 이해했다고 생각하시나요?
                                                 </label>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-xs text-gray-500">전혀 그렇지 않다</span>
-                                                    <div className="flex space-x-2">
-                                                        {[1, 2, 3, 4, 5].map(value => (
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <span className="text-xs text-gray-500">전혀 이해하지 못함</span>
+                                                    <div className="flex space-x-1">
+                                                        {[1, 2, 3, 4, 5, 6, 7].map(value => (
                                                             <button
                                                                 key={value}
                                                                 type="button"
-                                                                onClick={() => setLlmHelpfulness(value.toString())}
-                                                                className={`w-12 h-12 rounded-full font-bold transition-colors ${
-                                                                    llmHelpfulness === value.toString()
-                                                                        ? 'bg-purple-600 text-white'
-                                                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                                onClick={() => setOverallComprehension(value.toString())}
+                                                                className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                    overallComprehension === value.toString()
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
                                                                 }`}
                                                             >
                                                                 {value}
                                                             </button>
                                                         ))}
                                                     </div>
-                                                    <span className="text-xs text-gray-500">매우 그렇다</span>
+                                                    <span className="text-xs text-gray-500">완전히 이해함</span>
                                                 </div>
                                             </div>
 
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-3">
-                                                    2. LLM의 응답은 신뢰할 만했다.
+                                                <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                    논문의 주요 연구 질문(research question)과 기여점(contribution)을 얼마나 잘 파악했다고 생각하시나요?
                                                 </label>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-xs text-gray-500">전혀 그렇지 않다</span>
-                                                    <div className="flex space-x-2">
-                                                        {[1, 2, 3, 4, 5].map(value => (
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <span className="text-xs text-gray-500">전혀 파악하지 못함</span>
+                                                    <div className="flex space-x-1">
+                                                        {[1, 2, 3, 4, 5, 6, 7].map(value => (
                                                             <button
                                                                 key={value}
                                                                 type="button"
-                                                                onClick={() => setLlmTrust(value.toString())}
-                                                                className={`w-12 h-12 rounded-full font-bold transition-colors ${
-                                                                    llmTrust === value.toString()
-                                                                        ? 'bg-purple-600 text-white'
-                                                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                                onClick={() => setResearchQuestionUnderstanding(value.toString())}
+                                                                className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                    researchQuestionUnderstanding === value.toString()
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
                                                                 }`}
                                                             >
                                                                 {value}
                                                             </button>
                                                         ))}
                                                     </div>
-                                                    <span className="text-xs text-gray-500">매우 그렇다</span>
+                                                    <span className="text-xs text-gray-500">완전히 파악함</span>
                                                 </div>
                                             </div>
 
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-3">
-                                                    3. LLM 사용 경험은 전반적으로 만족스러웠다.
+                                                <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                    논문의 방법론(methodology)을 얼마나 잘 이해했다고 생각하시나요?
                                                 </label>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-xs text-gray-500">전혀 그렇지 않다</span>
-                                                    <div className="flex space-x-2">
-                                                        {[1, 2, 3, 4, 5].map(value => (
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <span className="text-xs text-gray-500">전혀 이해하지 못함</span>
+                                                    <div className="flex space-x-1">
+                                                        {[1, 2, 3, 4, 5, 6, 7].map(value => (
                                                             <button
                                                                 key={value}
                                                                 type="button"
-                                                                onClick={() => setLlmInfluence(value.toString())}
-                                                                className={`w-12 h-12 rounded-full font-bold transition-colors ${
-                                                                    llmInfluence === value.toString()
-                                                                        ? 'bg-purple-600 text-white'
-                                                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                                onClick={() => setMethodologyUnderstanding(value.toString())}
+                                                                className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                    methodologyUnderstanding === value.toString()
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
                                                                 }`}
                                                             >
                                                                 {value}
                                                             </button>
                                                         ))}
                                                     </div>
-                                                    <span className="text-xs text-gray-500">매우 그렇다</span>
+                                                    <span className="text-xs text-gray-500">완전히 이해함</span>
                                                 </div>
                                             </div>
 
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    LLM이 논문 이해를 돕는 과정에서 가장 도움이 되었던 점은 무엇인가요?
+                                                <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                    논문의 결과(results)와 함의(implications)를 얼마나 잘 이해했다고 생각하시나요?
                                                 </label>
-                                                <textarea
-                                                    value={llmAdvantages}
-                                                    onChange={(e) => setLlmAdvantages(e.target.value)}
-                                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-purple-500"
-                                                    rows="3"
-                                                    placeholder="자유롭게 의견을 남겨주세요..."
-                                                />
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <span className="text-xs text-gray-500">전혀 이해하지 못함</span>
+                                                    <div className="flex space-x-1">
+                                                        {[1, 2, 3, 4, 5, 6, 7].map(value => (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                onClick={() => setResultsUnderstanding(value.toString())}
+                                                                className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                    resultsUnderstanding === value.toString()
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                                }`}
+                                                            >
+                                                                {value}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">완전히 이해함</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Quiz Confidence */}
+                                    <div className="mb-6">
+                                        <h3 className="text-lg font-semibold text-gray-700 mb-3">2. Quiz Confidence (퀴즈 답변에 대한 확신)</h3>
+                                        <p className="text-sm text-gray-600 mb-4">방금 완료한 퀴즈에 대해 평가해주세요.</p>
+
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                전반적으로, 귀하의 퀴즈 답변들이 정확하다고 얼마나 확신하시나요?
+                                            </label>
+                                            <div className="flex items-center justify-between mt-3">
+                                                <span className="text-xs text-gray-500">전혀 확신하지 않음</span>
+                                                <div className="flex space-x-1">
+                                                    {[1, 2, 3, 4, 5, 6, 7].map(value => (
+                                                        <button
+                                                            key={value}
+                                                            type="button"
+                                                            onClick={() => setQuizConfidence(value.toString())}
+                                                            className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                quizConfidence === value.toString()
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                            }`}
+                                                        >
+                                                            {value}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <span className="text-xs text-gray-500">매우 확신함</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Review Confidence */}
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-gray-700 mb-3">3. Review Confidence (리뷰 작성에 대한 확신)</h3>
+                                        <p className="text-sm text-gray-600 mb-4">방금 작성한 논문 리뷰에 대해 평가해주세요.</p>
+
+                                        <div className="space-y-6">
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                    귀하가 제시한 논문에 대한 평점(rating)이 적절하다고 얼마나 확신하시나요?
+                                                </label>
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <span className="text-xs text-gray-500">전혀 확신하지 않음</span>
+                                                    <div className="flex space-x-1">
+                                                        {[1, 2, 3, 4, 5, 6, 7].map(value => (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                onClick={() => setRatingConfidence(value.toString())}
+                                                                className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                    ratingConfidence === value.toString()
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                                }`}
+                                                            >
+                                                                {value}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">매우 확신함</span>
+                                                </div>
                                             </div>
 
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    LLM이 논문 이해를 돕는 과정에서 부족하다고 느낀 부분이 있었다면 설명해주세요.
+                                                <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                    귀하가 작성한 리뷰의 강점(strengths) 부분이 논문의 실제 강점을 잘 반영한다고 얼마나 확신하시나요?
                                                 </label>
-                                                <textarea
-                                                    value={llmDisadvantages}
-                                                    onChange={(e) => setLlmDisadvantages(e.target.value)}
-                                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-purple-500"
-                                                    rows="3"
-                                                    placeholder="자유롭게 의견을 남겨주세요..."
-                                                />
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <span className="text-xs text-gray-500">전혀 확신하지 않음</span>
+                                                    <div className="flex space-x-1">
+                                                        {[1, 2, 3, 4, 5, 6, 7].map(value => (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                onClick={() => setStrengthsConfidence(value.toString())}
+                                                                className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                    strengthsConfidence === value.toString()
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                                }`}
+                                                            >
+                                                                {value}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">매우 확신함</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                    귀하가 작성한 리뷰의 약점(weaknesses) 부분이 논문의 실제 약점을 잘 반영한다고 얼마나 확신하시나요?
+                                                </label>
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <span className="text-xs text-gray-500">전혀 확신하지 않음</span>
+                                                    <div className="flex space-x-1">
+                                                        {[1, 2, 3, 4, 5, 6, 7].map(value => (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                onClick={() => setWeaknessesConfidence(value.toString())}
+                                                                className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                    weaknessesConfidence === value.toString()
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                                }`}
+                                                            >
+                                                                {value}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">매우 확신함</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                    귀하가 제시한 개선 제안(suggestions)이 논문 향상에 도움이 될 것이라고 얼마나 확신하시나요?
+                                                </label>
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <span className="text-xs text-gray-500">전혀 확신하지 않음</span>
+                                                    <div className="flex space-x-1">
+                                                        {[1, 2, 3, 4, 5, 6, 7].map(value => (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                onClick={() => setSuggestionsConfidence(value.toString())}
+                                                                className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                    suggestionsConfidence === value.toString()
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                                }`}
+                                                            >
+                                                                {value}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">매우 확신함</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Section 3: LLM Usefulness (only for with_llm condition) */}
+                                {isWithLLM && (
+                                    <div className="border-b pb-6">
+                                        <h2 className="text-xl font-bold text-gray-800 mb-2">Section 3. LLM Usefulness</h2>
+                                        <p className="text-sm text-gray-600 mb-4">이번 과제에서의 LLM 사용 경험에 대해 평가해주세요.</p>
+
+                                        <div className="space-y-6">
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                    전반적으로, 이번 과제에서 LLM이 논문을 읽고 이해하는 데 얼마나 유용했나요?
+                                                </label>
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <span className="text-xs text-gray-500">전혀 유용하지 않음</span>
+                                                    <div className="flex space-x-1">
+                                                        {[1, 2, 3, 4, 5, 6, 7].map(value => (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                onClick={() => setLlmOverallUsefulness(value.toString())}
+                                                                className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                    llmOverallUsefulness === value.toString()
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                                }`}
+                                                            >
+                                                                {value}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">매우 유용함</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                    LLM은 논문의 어려운 개념이나 용어를 이해하는 데 얼마나 도움이 되었나요?
+                                                </label>
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <span className="text-xs text-gray-500">전혀 도움이 되지 않음</span>
+                                                    <div className="flex space-x-1">
+                                                        {[1, 2, 3, 4, 5, 6, 7].map(value => (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                onClick={() => setLlmConceptHelp(value.toString())}
+                                                                className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                    llmConceptHelp === value.toString()
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                                }`}
+                                                            >
+                                                                {value}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">매우 도움이 됨</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                    LLM은 논문의 방법론(methodology)을 이해하는 데 얼마나 도움이 되었나요?
+                                                </label>
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <span className="text-xs text-gray-500">전혀 도움이 되지 않음</span>
+                                                    <div className="flex space-x-1">
+                                                        {[1, 2, 3, 4, 5, 6, 7].map(value => (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                onClick={() => setLlmMethodologyHelp(value.toString())}
+                                                                className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                    llmMethodologyHelp === value.toString()
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                                }`}
+                                                            >
+                                                                {value}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">매우 도움이 됨</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                    LLM은 논문의 결과(results)를 해석하는 데 얼마나 도움이 되었나요?
+                                                </label>
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <span className="text-xs text-gray-500">전혀 도움이 되지 않음</span>
+                                                    <div className="flex space-x-1">
+                                                        {[1, 2, 3, 4, 5, 6, 7].map(value => (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                onClick={() => setLlmResultsHelp(value.toString())}
+                                                                className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                    llmResultsHelp === value.toString()
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                                }`}
+                                                            >
+                                                                {value}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">매우 도움이 됨</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                    LLM은 시간을 절약하는 데 얼마나 도움이 되었나요?
+                                                </label>
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <span className="text-xs text-gray-500">전혀 도움이 되지 않음</span>
+                                                    <div className="flex space-x-1">
+                                                        {[1, 2, 3, 4, 5, 6, 7].map(value => (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                onClick={() => setLlmTimeSaving(value.toString())}
+                                                                className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                    llmTimeSaving === value.toString()
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                                }`}
+                                                            >
+                                                                {value}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">매우 도움이 됨</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Overall Feedback */}
-                                <div className="pb-6">
-                                    <h2 className="text-xl font-bold text-gray-800 mb-4">추가 피드백</h2>
+                                {/* Section 4: LLM Trust (only for with_llm condition) */}
+                                {isWithLLM && (
+                                    <div className="border-b pb-6">
+                                        <h2 className="text-xl font-bold text-gray-800 mb-2">Section 4. LLM Trust</h2>
+                                        <p className="text-sm text-gray-600 mb-4">LLM 사용 경험에 대해 평가해주세요.</p>
 
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                논문을 이해하기 위해 어떤 전략을 사용하셨나요?
-                                            </label>
-                                            <textarea
-                                                value={strategies}
-                                                onChange={(e) => setStrategies(e.target.value)}
-                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500"
-                                                rows="3"
-                                                placeholder="예: 초록 먼저 읽기, 그림에 집중하기..."
-                                            />
-                                        </div>
+                                        <div className="space-y-6">
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                    전반적으로, LLM은 논문 읽기를 돕는 도구로서 유능하고 효과적이다.
+                                                </label>
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <span className="text-xs text-gray-500">전혀 그렇지 않다</span>
+                                                    <div className="flex space-x-1">
+                                                        {[1, 2, 3, 4, 5, 6, 7].map(value => (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                onClick={() => setLlmCompetence(value.toString())}
+                                                                className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                    llmCompetence === value.toString()
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                                }`}
+                                                            >
+                                                                {value}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">매우 그렇다</span>
+                                                </div>
+                                            </div>
 
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                논문을 읽는 과정에서 겪은 주요 어려움은 무엇이었나요?
-                                            </label>
-                                            <textarea
-                                                value={challenges}
-                                                onChange={(e) => setChallenges(e.target.value)}
-                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500"
-                                                rows="3"
-                                                placeholder="자유롭게 작성해주세요..."
-                                            />
-                                        </div>
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                    LLM이 제공한 정보는 정확했다.
+                                                </label>
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <span className="text-xs text-gray-500">전혀 그렇지 않다</span>
+                                                    <div className="flex space-x-1">
+                                                        {[1, 2, 3, 4, 5, 6, 7].map(value => (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                onClick={() => setLlmAccuracy(value.toString())}
+                                                                className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                    llmAccuracy === value.toString()
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                                }`}
+                                                            >
+                                                                {value}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">매우 그렇다</span>
+                                                </div>
+                                            </div>
 
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                논문 읽기 경험을 개선하기 위해 어떤 점이 보완되면 좋을까요?
-                                            </label>
-                                            <textarea
-                                                value={improvements}
-                                                onChange={(e) => setImprovements(e.target.value)}
-                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500"
-                                                rows="3"
-                                                placeholder="자유롭게 작성해주세요..."
-                                            />
-                                        </div>
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                    LLM은 나의 최선의 이익을 위해 만들어졌다고 믿는다.
+                                                </label>
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <span className="text-xs text-gray-500">전혀 그렇지 않다</span>
+                                                    <div className="flex space-x-1">
+                                                        {[1, 2, 3, 4, 5, 6, 7].map(value => (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                onClick={() => setLlmBenevolence(value.toString())}
+                                                                className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                    llmBenevolence === value.toString()
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                                }`}
+                                                            >
+                                                                {value}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">매우 그렇다</span>
+                                                </div>
+                                            </div>
 
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                기타 의견이 있으시면 자유롭게 작성해주세요.
-                                            </label>
-                                            <textarea
-                                                value={additionalComments}
-                                                onChange={(e) => setAdditionalComments(e.target.value)}
-                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500"
-                                                rows="3"
-                                                placeholder="선택사항..."
-                                            />
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                    나는 논문을 이해할 때 LLM에 항상 의존할 수 있다.
+                                                </label>
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <span className="text-xs text-gray-500">전혀 그렇지 않다</span>
+                                                    <div className="flex space-x-1">
+                                                        {[1, 2, 3, 4, 5, 6, 7].map(value => (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                onClick={() => setLlmReliability(value.toString())}
+                                                                className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                    llmReliability === value.toString()
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                                }`}
+                                                            >
+                                                                {value}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">매우 그렇다</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                    나는 LLM이 제공한 정보를 바탕으로 행동하는 것에 거리낌이 없다.
+                                                </label>
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <span className="text-xs text-gray-500">전혀 그렇지 않다</span>
+                                                    <div className="flex space-x-1">
+                                                        {[1, 2, 3, 4, 5, 6, 7].map(value => (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                onClick={() => setLlmComfortActing(value.toString())}
+                                                                className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                    llmComfortActing === value.toString()
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                                }`}
+                                                            >
+                                                                {value}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">매우 그렇다</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                    나는 LLM이 제공한 정보를 사용하는 데 주저함이 없다.
+                                                </label>
+                                                <div className="flex items-center justify-between mt-3">
+                                                    <span className="text-xs text-gray-500">전혀 그렇지 않다</span>
+                                                    <div className="flex space-x-1">
+                                                        {[1, 2, 3, 4, 5, 6, 7].map(value => (
+                                                            <button
+                                                                key={value}
+                                                                type="button"
+                                                                onClick={() => setLlmComfortUsing(value.toString())}
+                                                                className={`w-10 h-10 rounded-full text-sm font-bold transition-colors ${
+                                                                    llmComfortUsing === value.toString()
+                                                                        ? 'bg-blue-600 text-white'
+                                                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                                                }`}
+                                                            >
+                                                                {value}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">매우 그렇다</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                )}
 
-                                {/* Bank Account Information */}
-                                <div className="border-t pt-6">
-                                    <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-xl p-8 mb-6">
-                                        <div className="text-center mb-6">
-                                            <div className="text-4xl mb-3">🎁</div>
-                                            <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                                                실험에 참여해주셔서 감사합니다!
-                                            </h2>
-                                            <p className="text-gray-600">
-                                                사례 지급을 위해 계좌 정보를 입력해주세요.
-                                            </p>
-                                        </div>
+                                {/* Bank Account (only for 2nd session) */}
+                                {sessionNumber === '2' && (
+                                    <div className="border-b pb-6">
+                                        <h2 className="text-xl font-bold text-gray-800 mb-2">사례 지급 정보</h2>
+                                        <p className="text-sm text-gray-600 mb-4">실험 참여 사례 지급을 위한 정보를 입력해주세요.</p>
 
-                                        <div className="max-w-md mx-auto">
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                계좌 정보 *
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                은행명 및 계좌번호 *
                                             </label>
                                             <input
                                                 type="text"
                                                 value={bankAccount}
                                                 onChange={(e) => setBankAccount(e.target.value)}
-                                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                placeholder="예: 신한 110-125-****** 김ㅁㅁ"
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                placeholder="예: 카카오뱅크 3333-12-1234567"
                                                 required
                                             />
-                                            <p className="text-xs text-gray-500 mt-2">
-                                                은행명, 계좌번호, 예금주명을 입력해주세요.
-                                            </p>
                                         </div>
                                     </div>
-                                </div>
+                                )}
 
                                 {/* Submit */}
                                 <div className="pt-6">
@@ -472,7 +1001,7 @@
                                         type="submit"
                                         className="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 font-medium transition-colors text-lg"
                                     >
-                                        제출하기
+                                        {sessionNumber === '2' ? '설문 제출 및 완료' : '설문 제출 및 다음 세션으로'}
                                     </button>
                                 </div>
                             </form>
