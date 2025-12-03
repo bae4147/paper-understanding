@@ -1740,12 +1740,12 @@ Use markdown formatting for better readability:
 
                                 <div className="bg-gray-50 rounded-lg p-6">
                                     <h3 className="font-bold text-lg text-gray-800 mb-2">논문 제목</h3>
-                                    <p className="text-gray-700">{paper?.name}</p>
+                                    <p className="text-gray-700">{paper?.name} ({paper?.year})</p>
                                 </div>
 
                                 <div className="bg-gray-50 rounded-lg p-6">
                                     <h3 className="font-bold text-lg text-gray-800 mb-2">제한 시간</h3>
-                                    <p className="text-3xl font-bold text-blue-600">30분</p>
+                                    <p className="text-3xl font-bold text-blue-600">20분</p>
                                 </div>
 
                                 <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4">
@@ -1778,15 +1778,15 @@ Use markdown formatting for better readability:
                         <div className="bg-white shadow-md px-6 py-4 flex items-center justify-between border-b-2 border-gray-200">
                             <div>
                                 <h2 className="text-lg font-bold text-gray-800">
-                                    [논문 읽기] {papers.find(p => p.id === currentPaper)?.name}
+                                    [논문 읽기] {papers.find(p => p.id === currentPaper)?.name} ({papers.find(p => p.id === currentPaper)?.year})
                                 </h2>
                                 <p className="text-sm text-gray-600">
                                     {participantId} | {condition === 'with_llm' ? 'With LLM' : 'Without LLM'} | Section: <strong>{currentSection}</strong>
                                 </p>
                             </div>
                             <div className="flex items-center space-x-4">
-                                <Timer 
-                                    seconds={30 * 60} 
+                                <Timer
+                                    seconds={20 * 60}
                                     isActive={readingActive}
                                     phase="reading"
                                     onComplete={() => alert('Reading time is up! Please proceed to the quiz.')}
@@ -1804,15 +1804,15 @@ Use markdown formatting for better readability:
                         {/* Main content */}
                         <div className="flex-1 flex overflow-hidden">
                             {condition === 'without_llm' ? (
-                                // Without LLM: Full-width reading
-                                <div className="flex-1 bg-white flex flex-col overflow-hidden">
+                                // Without LLM: Centered with same width as with_llm condition
+                                <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
                                     <div
                                         ref={pdfContainerRef}
                                         onScroll={handleScroll}
                                         onMouseUp={handleTextSelection}
-                                        className="flex-1 overflow-y-auto p-8 bg-gray-50"
+                                        className="flex-1 overflow-y-auto p-8"
                                     >
-                                        <div className="max-w-4xl mx-auto bg-white shadow-xl rounded-lg p-12">
+                                        <div className="w-full max-w-[900px] mx-auto bg-white shadow-xl rounded-lg p-12">
                                             <div
                                                 id="paper-content"
                                                 className="prose max-w-none"
@@ -1822,11 +1822,11 @@ Use markdown formatting for better readability:
                                     </div>
                                 </div>
                             ) : (
-                                // With LLM: Split screen layout
+                                // With LLM: Split screen layout with fixed paper width
                                 <>
                                     {/* Left Panel - Reading */}
                                     <div
-                                        className={`flex-1 bg-white flex flex-col overflow-hidden transition-all ${
+                                        className={`flex-1 bg-gray-50 flex flex-col overflow-hidden transition-all ${
                                             activeFocus === 'reading' ? 'border-4 border-purple-500' : 'border-4 border-transparent'
                                         }`}
                                         onMouseEnter={() => switchFocus('reading')}
@@ -1835,9 +1835,9 @@ Use markdown formatting for better readability:
                                             ref={pdfContainerRef}
                                             onScroll={handleScroll}
                                             onMouseUp={handleTextSelection}
-                                            className="flex-1 overflow-y-auto p-8 bg-gray-50"
+                                            className="flex-1 overflow-y-auto p-8"
                                         >
-                                            <div className="max-w-4xl mx-auto bg-white shadow-xl rounded-lg p-12">
+                                            <div className="w-full max-w-[900px] mx-auto bg-white shadow-xl rounded-lg p-12">
                                                 <div
                                                     id="paper-content"
                                                     className="prose max-w-none"
@@ -1857,11 +1857,10 @@ Use markdown formatting for better readability:
                             {/* Chat UI Content */}
                             {condition === 'with_llm' && (
                                 <div className="flex-1 bg-white flex flex-col overflow-hidden">
-                                    {/* ChatGPT-style header */}
+                                    {/* LLM Assistant header */}
                                     <div className="px-4 py-3 border-b bg-white flex items-center justify-between">
                                         <div className="flex items-center space-x-2">
-                                            <span className="text-xl font-semibold">ChatGPT</span>
-                                            <span className="text-sm text-gray-500">4</span>
+                                            <span className="text-xl font-semibold">LLM Assistant</span>
                                         </div>
                                         <button
                                             onClick={() => {
@@ -1941,7 +1940,7 @@ Use markdown formatting for better readability:
                                         )}
                                     </div>
 
-                                    {/* ChatGPT-style Input Area */}
+                                    {/* LLM Assistant Input Area */}
                                     <div className="p-6 border-t bg-white">
                                         <div className="max-w-3xl mx-auto">
                                             {/* Attached Files Display */}
@@ -2018,7 +2017,7 @@ Use markdown formatting for better readability:
                                                         value={inputMessage}
                                                         onChange={handleTextareaChange}
                                                         onKeyDown={handleChatKeyDown}
-                                                        placeholder="Message ChatGPT (Shift+Enter for newline)"
+                                                        placeholder="메시지를 입력하세요 (Shift+Enter: 줄바꿈)"
                                                         className="flex-1 px-4 py-3 bg-transparent focus:outline-none text-gray-900 placeholder-gray-500 resize-none overflow-y-auto"
                                                         style={{maxHeight: '264px', minHeight: '24px', lineHeight: '24px'}}
                                                         rows={1}
@@ -2099,13 +2098,14 @@ Use markdown formatting for better readability:
                                 <div className="bg-gray-50 rounded-lg p-6">
                                     <h3 className="font-bold text-lg text-gray-800 mb-2">안내</h3>
                                     <p className="text-gray-700">
-                                        논문을 읽고 이해한 내용을 바탕으로 질문에 답해주세요. (객관식 5문제, 주관식 5문제)
+                                        <li>논문을 읽고 이해한 내용을 바탕으로 질문에 답해주세요. (객관식 10문제)</li>
+                                        <li>답을 고르기 어려운 문제는 선지 가운데 "모름"을 선택해주세요.</li>
                                     </p>
                                 </div>
 
                                 <div className="bg-gray-50 rounded-lg p-6">
                                     <h3 className="font-bold text-lg text-gray-800 mb-2">제한 시간</h3>
-                                    <p className="text-3xl font-bold text-purple-600">15분</p>
+                                    <p className="text-3xl font-bold text-purple-600">5분</p>
                                 </div>
                             </div>
 
@@ -2129,14 +2129,14 @@ Use markdown formatting for better readability:
             if (phase === 'quiz') {
                 return (
                     <div className="min-h-screen bg-gray-50">
-                        <div className="bg-white shadow-md px-6 py-4 border-b-2 flex items-center justify-between">
+                        <div className="bg-white shadow-md px-6 py-4 border-b-2 flex items-center justify-between sticky top-0 z-50">
                             <div>
-                                <h2 className="text-lg font-bold text-gray-800">Session {sessionNumber} - 문제 풀이</h2>
+                                <h2 className="text-lg font-bold text-gray-800">Session {sessionNumber} - 논문 이해도 퀴즈</h2>
                                 <p className="text-sm text-gray-600">Closed-book</p>
                             </div>
                             <div className="flex items-center space-x-4">
-                                <Timer 
-                                    seconds={15 * 60} 
+                                <Timer
+                                    seconds={5 * 60}
                                     isActive={quizActive}
                                     phase="quiz"
                                     onComplete={() => alert('Quiz time is up!')}
@@ -2153,7 +2153,7 @@ Use markdown formatting for better readability:
                         <div className="max-w-4xl mx-auto p-8">
                             <div className="bg-blue-50 border-l-4 border-blue-600 p-4 mb-6">
                                 <p className="text-sm">
-                                    <strong>안내: </strong>논문을 읽고 이해한 내용을 바탕으로 질문에 답해주세요. (객관식 5문제, 주관식 5문제)
+                                    <strong>안내: </strong>논문을 읽고 이해한 내용을 바탕으로 질문에 답해주세요. (객관식 10문제)
                                 </p>
                             </div>
 
@@ -2167,9 +2167,6 @@ Use markdown formatting for better readability:
                                             <div className="flex-1">
                                                 <div className="flex items-center mb-2">
                                                     <p className="font-medium text-gray-900">{q.question}</p>
-                                                    <span className="ml-3 px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded">
-                                                        {q.type === 'multiple_choice' ? '객관식' : '주관식'}
-                                                    </span>
                                                 </div>
 
                                                 {q.type === 'multiple_choice' ? (
@@ -2187,15 +2184,42 @@ Use markdown formatting for better readability:
                                                                 <span className="text-gray-700">{option}</span>
                                                             </label>
                                                         ))}
+                                                        {/* 모름 option */}
+                                                        <p className="text-xs text-gray-500 mt-3 mb-1 pl-1">답을 고르기 어렵다면 아래 '모름'을 선택해주세요.</p>
+                                                        <label className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer border border-gray-200 border-dashed">
+                                                            <input
+                                                                type="radio"
+                                                                name={`question-${q.id}`}
+                                                                value="모름"
+                                                                checked={quizAnswers[q.id] === '모름'}
+                                                                onChange={(e) => handleQuizAnswer(q.id, e.target.value)}
+                                                                className="w-4 h-4"
+                                                            />
+                                                            <span className="text-gray-500">모름</span>
+                                                        </label>
                                                     </div>
                                                 ) : (
-                                                    <textarea
-                                                        className="w-full mt-4 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                        rows="4"
-                                                        placeholder="답변을 입력하세요..."
-                                                        value={quizAnswers[q.id] || ''}
-                                                        onChange={(e) => handleQuizAnswer(q.id, e.target.value)}
-                                                    />
+                                                    <div className="mt-4">
+                                                        <textarea
+                                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                            rows="4"
+                                                            placeholder="답변을 입력하세요..."
+                                                            value={quizAnswers[q.id] === '모름' ? '' : (quizAnswers[q.id] || '')}
+                                                            onChange={(e) => handleQuizAnswer(q.id, e.target.value)}
+                                                            disabled={quizAnswers[q.id] === '모름'}
+                                                        />
+                                                        {/* 모름 option for short answer */}
+                                                        <p className="text-xs text-gray-500 mt-3 mb-1 pl-1">답을 고르기 어렵다면 아래 '모름'을 선택해주세요.</p>
+                                                        <label className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer border border-gray-200 border-dashed">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={quizAnswers[q.id] === '모름'}
+                                                                onChange={(e) => handleQuizAnswer(q.id, e.target.checked ? '모름' : '')}
+                                                                className="w-4 h-4"
+                                                            />
+                                                            <span className="text-gray-500">모름</span>
+                                                        </label>
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -2258,13 +2282,16 @@ Use markdown formatting for better readability:
                                 <div className="bg-gray-50 rounded-lg p-6">
                                     <h3 className="font-bold text-lg text-gray-800 mb-2">안내</h3>
                                     <p className="text-gray-700">
-                                        논문을 읽고 이해한 내용을 바탕으로 리뷰어의 관점에서 논문을 평가해주세요. 각 항목에 대한 글자 수 제한은 없습니다.
+                                        논문을 읽고 이해한 내용을 바탕으로 리뷰어의 관점에서 논문을 평가해주세요.
+                                    </p>
+                                    <p className="text-gray-700">
+                                        각 항목에 대한 글자 수 제한은 없습니다.
                                     </p>
                                 </div>
 
                                 <div className="bg-gray-50 rounded-lg p-6">
                                     <h3 className="font-bold text-lg text-gray-800 mb-2">제한 시간</h3>
-                                    <p className="text-3xl font-bold text-green-600">20분</p>
+                                    <p className="text-3xl font-bold text-green-600">15분</p>
                                 </div>
                             </div>
 
@@ -2295,7 +2322,7 @@ Use markdown formatting for better readability:
                             </div>
                             <div className="flex items-center space-x-4">
                                 <Timer
-                                    seconds={20 * 60}
+                                    seconds={15 * 60}
                                     isActive={reviewActive}
                                     phase="review"
                                     onComplete={() => alert('Review time is up!')}
@@ -2313,6 +2340,11 @@ Use markdown formatting for better readability:
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-full">
                                 {/* Paper (for reference) */}
                                 <div className="bg-white rounded-lg shadow-md p-6 overflow-y-auto">
+                                    <div className="mb-4 pb-4 border-b border-gray-200">
+                                        <h3 className="text-lg font-bold text-gray-800">
+                                            {papers.find(p => p.id === currentPaper)?.name} ({papers.find(p => p.id === currentPaper)?.year})
+                                        </h3>
+                                    </div>
                                     <div
                                         className="prose max-w-none"
                                         dangerouslySetInnerHTML={{ __html: paperContent }}

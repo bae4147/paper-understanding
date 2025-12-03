@@ -205,8 +205,8 @@
                         alert('첫 번째 세션이 완료되었습니다. 잠시 후 두 번째 세션이 시작됩니다.');
                         window.location.href = `index.html?${params.toString()}`;
                     } else {
-                        // After 2nd session, show completion
-                        alert('모든 실험이 완료되었습니다! 참여해주셔서 감사합니다.');
+                        // After 2nd session, redirect to completion page
+                        window.location.href = `complete.html?participantId=${participantId}`;
                     }
 
                 } catch (error) {
@@ -232,11 +232,8 @@
                             {/* Header */}
                             <div className="text-center mb-8">
                                 <div className="text-5xl mb-4">📝</div>
-                                <h1 className="text-3xl font-bold text-gray-800 mb-2">Post-Task Survey</h1>
-                                <p className="text-gray-600">세션 {sessionNumber} 사후 설문</p>
-                                <p className="text-sm text-gray-500 mt-2">
-                                    참가자: {participantId} | 조건: {isWithLLM ? 'LLM 사용' : 'LLM 미사용'}
-                                </p>
+                                <p className="text-gray-600">Session {sessionNumber}</p>
+                                <h1 className="text-3xl font-bold text-gray-800 mb-2">사후 설문</h1>
                             </div>
 
                             <form onSubmit={handleSubmit} className="space-y-8">
@@ -245,7 +242,7 @@
                                     <h2 className="text-xl font-bold text-gray-800 mb-2">Section 1. NASA-TLX</h2>
                                     <p className="text-sm text-gray-600 mb-4">방금 완료한 논문 읽기 과제에 대해 평가해주세요.</p>
 
-                                    <div className="space-y-6">
+                                    <div className="space-y-8">
                                         <div>
                                             <label className="block text-sm font-bold text-gray-800 mb-2">
                                                 Mental Demand (정신적 요구): 논문을 읽는 동안 얼마나 많은 정신적 활동이 필요했나요?
@@ -415,7 +412,7 @@
                                         <h3 className="text-lg font-semibold text-gray-700 mb-3">1. Overall Paper Comprehension (전반적 논문 이해도)</h3>
                                         <p className="text-sm text-gray-600 mb-4">읽은 논문에 대한 스스로의 이해도를 평가하는 항목입니다.</p>
 
-                                        <div className="space-y-6">
+                                        <div className="space-y-8">
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-800 mb-2">
                                                     방금 읽은 논문을 전반적으로 얼마나 잘 이해했다고 생각하시나요?
@@ -559,7 +556,7 @@
                                         <h3 className="text-lg font-semibold text-gray-700 mb-3">3. Review Confidence (리뷰 작성에 대한 확신)</h3>
                                         <p className="text-sm text-gray-600 mb-4">방금 작성한 논문 리뷰에 대해 평가해주세요.</p>
 
-                                        <div className="space-y-6">
+                                        <div className="space-y-8">
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-800 mb-2">
                                                     귀하가 제시한 논문에 대한 평점(rating)이 적절하다고 얼마나 확신하시나요?
@@ -673,7 +670,7 @@
                                         <h2 className="text-xl font-bold text-gray-800 mb-2">Section 3. LLM Usefulness</h2>
                                         <p className="text-sm text-gray-600 mb-4">이번 과제에서의 LLM 사용 경험에 대해 평가해주세요.</p>
 
-                                        <div className="space-y-6">
+                                        <div className="space-y-8">
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-800 mb-2">
                                                     전반적으로, 이번 과제에서 LLM이 논문을 읽고 이해하는 데 얼마나 유용했나요?
@@ -813,7 +810,7 @@
                                         <h2 className="text-xl font-bold text-gray-800 mb-2">Section 4. LLM Trust</h2>
                                         <p className="text-sm text-gray-600 mb-4">LLM 사용 경험에 대해 평가해주세요.</p>
 
-                                        <div className="space-y-6">
+                                        <div className="space-y-8">
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-800 mb-2">
                                                     전반적으로, LLM은 논문 읽기를 돕는 도구로서 유능하고 효과적이다.
