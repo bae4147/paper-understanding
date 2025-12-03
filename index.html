@@ -1159,9 +1159,9 @@ Use markdown formatting for better readability:
                 html = html.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
                 html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
 
-                // Italic (*text* or _text_)
-                html = html.replace(/\*([^\*]+)\*/g, '<em>$1</em>');
-                html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+                // Italic (*text* or _text_) - be careful not to match list items
+                html = html.replace(/(?<![*\-])\*([^\*\n]+)\*(?!\*)/g, '<em>$1</em>');
+                html = html.replace(/(?<!_)_([^_\n]+)_(?!_)/g, '<em>$1</em>');
 
                 // Headers (# text) - process from most specific (####) to least specific (#)
                 html = html.replace(/^#### (.+)$/gm, '<h4 style="font-size: 1.05em; font-weight: 600; margin: 10px 0 6px 0;">$1</h4>');
@@ -1169,15 +1169,65 @@ Use markdown formatting for better readability:
                 html = html.replace(/^## (.+)$/gm, '<h2 style="font-size: 1.2em; font-weight: 600; margin: 12px 0 8px 0;">$1</h2>');
                 html = html.replace(/^# (.+)$/gm, '<h1 style="font-size: 1.3em; font-weight: 600; margin: 12px 0 8px 0;">$1</h1>');
 
-                // Unordered lists (- item or * item)
-                html = html.replace(/^[\-\*] (.+)$/gm, '<li style="margin-left: 20px;">$1</li>');
-                html = html.replace(/(<li.*<\/li>\n?)+/g, '<ul style="margin: 8px 0; padding-left: 20px;">$&</ul>');
+                // Process lists by splitting into lines
+                const lines = html.split('\n');
+                let result = [];
+                let inUnorderedList = false;
+                let inOrderedList = false;
 
-                // Ordered lists (1. item)
-                html = html.replace(/^\d+\. (.+)$/gm, '<li style="margin-left: 20px;">$1</li>');
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    const unorderedMatch = line.match(/^[\-\*]\s+(.+)$/);
+                    const orderedMatch = line.match(/^\d+\.\s+(.+)$/);
 
-                // Line breaks
-                html = html.replace(/\n/g, '<br>');
+                    if (unorderedMatch) {
+                        if (inOrderedList) {
+                            result.push('</ol>');
+                            inOrderedList = false;
+                        }
+                        if (!inUnorderedList) {
+                            result.push('<ul style="margin: 8px 0; padding-left: 24px; list-style-type: disc;">');
+                            inUnorderedList = true;
+                        }
+                        result.push('<li style="margin: 4px 0;">' + unorderedMatch[1] + '</li>');
+                    } else if (orderedMatch) {
+                        if (inUnorderedList) {
+                            result.push('</ul>');
+                            inUnorderedList = false;
+                        }
+                        if (!inOrderedList) {
+                            result.push('<ol style="margin: 8px 0; padding-left: 24px; list-style-type: decimal;">');
+                            inOrderedList = true;
+                        }
+                        result.push('<li style="margin: 4px 0;">' + orderedMatch[1] + '</li>');
+                    } else {
+                        if (inUnorderedList) {
+                            result.push('</ul>');
+                            inUnorderedList = false;
+                        }
+                        if (inOrderedList) {
+                            result.push('</ol>');
+                            inOrderedList = false;
+                        }
+                        // Convert empty lines to paragraph breaks, others to line breaks
+                        if (line.trim() === '') {
+                            result.push('<br>');
+                        } else {
+                            result.push(line);
+                        }
+                    }
+                }
+
+                // Close any open lists
+                if (inUnorderedList) result.push('</ul>');
+                if (inOrderedList) result.push('</ol>');
+
+                // Join with line breaks for non-list content
+                html = result.join('\n');
+
+                // Replace remaining newlines with <br> (but not inside lists)
+                html = html.replace(/\n(?![<])/g, '<br>');
+                html = html.replace(/\n/g, '');
 
                 return html;
             };
