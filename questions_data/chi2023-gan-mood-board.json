@@ -1,0 +1,110 @@
+{
+  "paperId": "chi2023-gan-mood-board",
+  "paperTitle": "Investigating Semantically-enhanced Exploration of GAN Latent Space via a Digital Mood Board",
+  "questions": [
+    {
+      "id": 1,
+      "type": "multiple_choice",
+      "question": "이 연구의 주된 목적은 무엇이었습니까?",
+      "options": [
+        "AI가 인간 디자이너보다 더 창의적이라는 것을 통계적으로 증명하는 것",
+        "GAN으로 생성된 시각적 아이디어를 탐색하는 데 있어 디지털 무드보드와 전통적인 갤러리 디스플레이를 비교하는 것",
+        "새로운 StyleGAN 모델을 개발하여 이미지 생성 성능을 높이는 것",
+        "초심자도 쉽게 사용할 수 있는 상업용 캐릭터 디자인 도구를 출시하는 것"
+      ],
+      "correctAnswer": "GAN으로 생성된 시각적 아이디어를 탐색하는 데 있어 디지털 무드보드와 전통적인 갤러리 디스플레이를 비교하는 것",
+      "section": "Introduction"
+    },
+    {
+      "id": 2,
+      "type": "multiple_choice",
+      "question": "연구에서 사용된 디지털 무드보드의 '스타일 믹스(style mix)' 기능은 어떤 알고리즘에서 영감을 받았습니까?",
+      "options": [
+        "애니메이션 이미지 분류 알고리즘 (Anime Image Classification Algorithm)",
+        "스타일 군집화 알고리즘 (Style Clustering Algorithm)",
+        "유전 알고리즘 (Genetic Algorithm)",
+        "경사 하강법 (Gradient Descent)"
+      ],
+      "correctAnswer": "유전 알고리즘 (Genetic Algorithm)",
+      "section": "The Mood Board"
+    },
+    {
+      "id": 3,
+      "type": "multiple_choice",
+      "question": "사용자 평가 결과, 디지털 무드보드가 갤러리 디스플레이에 비해 가졌던 주요 단점은 무엇이었습니까?",
+      "options": [
+        "새로운 아이디어를 탐색할 방법이 더 적었음",
+        "사용하는 과정이 덜 즐거웠음",
+        "정신적 요구량과 노력이 더 높게 인식됨",
+        "생성되는 이미지의 품질이 더 낮음"
+      ],
+      "correctAnswer": "정신적 요구량과 노력이 더 높게 인식됨",
+      "section": "Results"
+    },
+    {
+      "id": 4,
+      "type": "multiple_choice",
+      "question": "창의성 지원 지수(CSI) 평가에 따르면, 무드보드는 갤러리에 비해 어떤 측면에서 더 긍정적인 평가를 받았습니까?",
+      "options": [
+        "더 즐겁고 표현력이 높다고 평가되었다.",
+        "탐색 과정이 덜 힘들다고 평가되었다.",
+        "전반적인 사용성이 더 높다고 평가되었다.",
+        "새로운 아이디어를 더 빠르게 찾을 수 있었다."
+      ],
+      "correctAnswer": "더 즐겁고 표현력이 높다고 평가되었다.",
+      "section": "Results"
+    },
+    {
+      "id": 5,
+      "type": "multiple_choice",
+      "question": "무드보드에서 사용된 의미론적 지원(semantic support)에 대한 참가자들의 피드백으로 적절하지 않은 것은 무엇입니까?",
+      "options": [
+        "스티커 메모를 사용하여 아이디어를 정리하고 새로운 이미지를 탐색하는 것이 명시적이라고 생각했다.",
+        "대부분의 참가자들이 의미론적 태그를 완전히 무시하고 이미지에만 집중했다.",
+        "일부 참가자는 추상적인 이미지를 찾을 때 태그가 오히려 방해가 된다고 느꼈다.",
+        "스티커 메모가 많아져 복잡해지면 이를 정리하고 이해하는 것이 정신적으로 부담될 수 있다고 언급되었다."
+      ],
+      "correctAnswer": "대부분의 참가자들이 의미론적 태그를 완전히 무시하고 이미지에만 집중했다.",
+      "section": "Results"
+    },
+    {
+      "id": 6,
+      "type": "multiple_choice",
+      "question": "이 연구는 어떤 유형의 참가자들을 대상으로 진행되었습니까?",
+      "options": [
+        "전문적인 애니메이션 캐릭터 디자이너들",
+        "다양한 문화적 배경을 가진 사용자 그룹",
+        "StyleGAN 모델 개발에 참여한 AI 연구원들",
+        "캐릭터 디자인에 전문 지식이 없는 초심자 사용자들"
+      ],
+      "correctAnswer": "캐릭터 디자인에 전문 지식이 없는 초심자 사용자들",
+      "section": "Evaluation"
+    },
+    {
+      "id": 7,
+      "type": "multiple_choice",
+      "question": "참가자들이 갤러리 디스플레이를 긍정적으로 평가한 이유로 언급한 장점은 무엇이었습니까?",
+      "options": [
+        "특정 이미지를 미세 조정하는 데 더 효과적이다",
+        "더 많은 맞춤 설정 옵션을 제공한다",
+        "AI와 상호작용하는 느낌이 들어 더 즐겁다",
+        "더 직설적이고 한눈에 파악하기 쉽다"
+      ],
+      "correctAnswer": "더 직설적이고 한눈에 파악하기 쉽다",
+      "section": "Results"
+    },
+    {
+      "id": 8,
+      "type": "multiple_choice",
+      "question": "무드보드 시스템의 백엔드 서버에서 수행되는 역할이 아닌 것은 무엇입니까?",
+      "options": [
+        "프론트엔드의 요청에 따라 생성된 이미지와 태그를 반환한다",
+        "생성된 이미지에 대해 분류기를 사용하여 의미론적 태그를 예측한다",
+        "StyleGAN 생성기에 입력 벡터를 전달하여 이미지를 생성한다",
+        "사용자의 클릭과 드래그 같은 UI 상호작용을 직접 처리한다"
+      ],
+      "correctAnswer": "사용자의 클릭과 드래그 같은 UI 상호작용을 직접 처리한다",
+      "section": "The Mood Board"
+    }
+  ]
+}
