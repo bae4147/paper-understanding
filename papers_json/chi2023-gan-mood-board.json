@@ -1,0 +1,91 @@
+{
+  "paper_id": "chi2023-gan-mood-board",
+  "title": "Investigating Semantically-enhanced Exploration of GAN Latent Space via a Digital Mood Board",
+  "year": 2023,
+  "authors": [],
+  "abstract": "",
+  "sections": [
+    {
+      "title": "1 Introduction",
+      "level": 2
+    },
+    {
+      "title": "2 Related Work",
+      "level": 2
+    },
+    {
+      "title": "3 The Mood Board",
+      "level": 2
+    },
+    {
+      "title": "3.1 Sticky Notes",
+      "level": 3
+    },
+    {
+      "title": "3.2 Exploring New Generations",
+      "level": 3
+    },
+    {
+      "title": "4 Evaluation",
+      "level": 2
+    },
+    {
+      "title": "4.1 Participants",
+      "level": 3
+    },
+    {
+      "title": "4.2 Study Procedure",
+      "level": 3
+    },
+    {
+      "title": "4.3 Results",
+      "level": 3
+    },
+    {
+      "title": "5 Conclusion",
+      "level": 2
+    }
+  ],
+  "section_boundaries": {
+    "1 Introduction": {
+      "start": 184,
+      "end": 5172
+    },
+    "2 Related Work": {
+      "start": 5172,
+      "end": 12014
+    },
+    "3 The Mood Board": {
+      "start": 12014,
+      "end": 12912
+    },
+    "3.1 Sticky Notes": {
+      "start": 12912,
+      "end": 15430
+    },
+    "3.2 Exploring New Generations": {
+      "start": 15430,
+      "end": 21100
+    },
+    "4 Evaluation": {
+      "start": 21100,
+      "end": 21796
+    },
+    "4.1 Participants": {
+      "start": 21796,
+      "end": 22666
+    },
+    "4.2 Study Procedure": {
+      "start": 22666,
+      "end": 26490
+    },
+    "4.3 Results": {
+      "start": 26490,
+      "end": 36904
+    },
+    "5 Conclusion": {
+      "start": 36904,
+      "end": 38608
+    }
+  }
+}

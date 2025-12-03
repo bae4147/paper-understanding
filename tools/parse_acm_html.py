@@ -375,18 +375,39 @@ def parse_acm_html(html_path, paper_id):
     metadata = {
         'paper_id': paper_id,
         'title': '',
+        'year': None,
         'authors': [],
         'abstract': '',
         'sections': []
     }
-    
-    # Title
+
+    # Title and Year
     title_tag = soup.find('title')
     if title_tag:
         title_text = title_tag.get_text()
         title_text = title_text.split('|')[0].strip()
+
+        # Extract year from conference suffix before removing it
+        year_match = re.search(r'(\d{4}) CHI', title_text)
+        if year_match:
+            metadata['year'] = int(year_match.group(1))
+
+        # Remove conference suffix (e.g., " _ Extended Abstracts of the 2023 CHI...")
+        title_text = re.sub(r'\s*[_|]\s*Extended Abstracts of the \d{4} CHI.*$', '', title_text)
+        title_text = re.sub(r'\s*[_|]\s*Proceedings of the.*CHI.*$', '', title_text)
         metadata['title'] = title_text
         print(f"✓ Title: {title_text[:80]}...")
+
+    # Year from cover-date (fallback)
+    if not metadata['year']:
+        cover_date = soup.find(class_='cover-date')
+        if cover_date:
+            year_match = re.search(r'(\d{4})', cover_date.get_text())
+            if year_match:
+                metadata['year'] = int(year_match.group(1))
+
+    if metadata['year']:
+        print(f"✓ Year: {metadata['year']}")
     
     # Abstract
     abstract_section = content_wrapper.find('section', {'id': 'summary-abstract'})

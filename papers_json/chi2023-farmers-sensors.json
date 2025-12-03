@@ -1,0 +1,107 @@
+{
+  "paper_id": "chi2023-farmers-sensors",
+  "title": "Understanding Farmers’ Expectations and Experiences in Using Sensor Technologies",
+  "year": 2023,
+  "authors": [],
+  "abstract": "",
+  "sections": [
+    {
+      "title": "1 Introduction",
+      "level": 2
+    },
+    {
+      "title": "1.1 Supporting Data Tracking on Farm",
+      "level": 3
+    },
+    {
+      "title": "1.2 Making Sense of Tracked Data",
+      "level": 3
+    },
+    {
+      "title": "2 Method",
+      "level": 2
+    },
+    {
+      "title": "2.1 System Interface",
+      "level": 3
+    },
+    {
+      "title": "2.2 In-Depth Interview with the Users",
+      "level": 3
+    },
+    {
+      "title": "3 Results",
+      "level": 2
+    },
+    {
+      "title": "3.1 Taking Historical Data into Account",
+      "level": 3
+    },
+    {
+      "title": "3.2 Leveraging the Power of AI and Integrating Other Resources",
+      "level": 3
+    },
+    {
+      "title": "3.3 Making Sense of the Data as well as Decisions for the Users as Different Stakeholders",
+      "level": 3
+    },
+    {
+      "title": "4 Discussion and Conclusion",
+      "level": 2
+    },
+    {
+      "title": "Acknowledgments",
+      "level": 2
+    }
+  ],
+  "section_boundaries": {
+    "1 Introduction": {
+      "start": 160,
+      "end": 2628
+    },
+    "1.1 Supporting Data Tracking on Farm": {
+      "start": 2628,
+      "end": 6000
+    },
+    "1.2 Making Sense of Tracked Data": {
+      "start": 6000,
+      "end": 10046
+    },
+    "2 Method": {
+      "start": 10046,
+      "end": 11000
+    },
+    "2.1 System Interface": {
+      "start": 11000,
+      "end": 15658
+    },
+    "2.2 In-Depth Interview with the Users": {
+      "start": 15658,
+      "end": 17246
+    },
+    "3 Results": {
+      "start": 17246,
+      "end": 17670
+    },
+    "3.1 Taking Historical Data into Account": {
+      "start": 17670,
+      "end": 21156
+    },
+    "3.2 Leveraging the Power of AI and Integrating Other Resources": {
+      "start": 21156,
+      "end": 24282
+    },
+    "3.3 Making Sense of the Data as well as Decisions for the Users as Different Stakeholders": {
+      "start": 24282,
+      "end": 27674
+    },
+    "4 Discussion and Conclusion": {
+      "start": 27674,
+      "end": 32262
+    },
+    "Acknowledgments": {
+      "start": 32262,
+      "end": 32640
+    }
+  }
+}

@@ -1,28 +1,22 @@
 /**
  * Available papers for the experiment
- * This file is auto-generated from papers_json/ folder
- * Run: python tools/generate_papers_data.py
+ * Two papers selected for maximum semantic distance using SPECTER2
  */
 
-const AVAILABLE_PAPERS = [
+const EXPERIMENT_PAPERS = [
     {
-        id: 'chi2025-lbw-01',
-        name: '"A Great Start, But...": Evaluating LLM-Generated Mind Maps for Information Mapping in Video-Based Design',
-        year: 2025,
-        url: 'papers_html/chi2025-lbw-01.html'
+        id: 'chi2023-gan-mood-board',
+        name: 'Investigating Semantically-enhanced Exploration of GAN Latent Space via a Digital Mood Board',
+        url: 'papers_html/chi2023-gan-mood-board.html',
+        year: 2023
     },
     {
-        id: 'chi2025-lbw-02',
-        name: 'Exploring Older Adults Personality Preferences for LLM-powered Conversational Companions',
-        year: 2025,
-        url: 'papers_html/chi2025-lbw-02.html',
-        pdfUrl: 'papers_pdf/chi2025-lbw-02.pdf'
-    },
-    {
-        id: 'chi2025-lbw-03',
-        name: 'Finding the Right Balance: User Control and Automation in AI Tools for Supporting Older Adults\' Health Information Tasks',
-        year: 2025,
-        url: 'papers_html/chi2025-lbw-03.html',
-        pdfUrl: 'papers_pdf/chi2025-lbw-03.pdf'
+        id: 'chi2023-farmers-sensors',
+        name: 'Understanding Farmers\' Expectations and Experiences in Using Sensor Technologies',
+        url: 'papers_html/chi2023-farmers-sensors.html',
+        year: 2023
     }
 ];
+
+// For backward compatibility
+const AVAILABLE_PAPERS = EXPERIMENT_PAPERS;

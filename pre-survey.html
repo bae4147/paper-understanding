@@ -41,6 +41,7 @@
             const [currentPaper, setCurrentPaper] = useState('');
             const [mode, setMode] = useState('experiment');
             const [sessionOrder, setSessionOrder] = useState([]);
+            const [paperOrder, setPaperOrder] = useState([]);
             const [currentSection, setCurrentSection] = useState(1); // 1, 2, or 3
 
             // Get parameters from URL
@@ -55,11 +56,19 @@
                 setMode(urlMode);
 
                 if (urlMode === 'experiment') {
-                    const order = Math.random() < 0.5
+                    // Randomize condition order
+                    const condOrder = Math.random() < 0.5
                         ? ['with_llm', 'without_llm']
                         : ['without_llm', 'with_llm'];
-                    setSessionOrder(order);
-                    console.log('🎲 Randomized session order:', order);
+                    setSessionOrder(condOrder);
+                    console.log('🎲 Randomized condition order:', condOrder);
+
+                    // Randomize paper order
+                    const papOrder = Math.random() < 0.5
+                        ? ['chi2023-gan-mood-board', 'chi2023-farmers-sensors']
+                        : ['chi2023-farmers-sensors', 'chi2023-gan-mood-board'];
+                    setPaperOrder(papOrder);
+                    console.log('🎲 Randomized paper order:', papOrder);
                 }
             }, []);
 
@@ -211,9 +220,10 @@
                 const surveyData = {
                     participantId,
                     condition: mode === 'experiment' ? 'experiment_mode' : condition,
-                    paper: mode === 'experiment' ? 'chi2025-lbw-02,chi2025-lbw-03' : currentPaper,
+                    paper: mode === 'experiment' ? paperOrder.join(',') : currentPaper,
                     mode,
                     sessionOrder: mode === 'experiment' ? sessionOrder : null,
+                    paperOrder: mode === 'experiment' ? paperOrder : null,
                     demographics: {
                         age: parseInt(age),
                         gender,
@@ -223,7 +233,9 @@
                     academicExperience: {
                         researchYears: researchYears === 'other' ? researchYearsOther : researchYears,
                         publicationExperience: publicationExperience === 'yes',
+                        publicationCount: publicationExperience === 'yes' && publicationCount ? parseInt(publicationCount) : null,
                         reviewExperience: reviewExperience === 'yes',
+                        reviewCount: reviewExperience === 'yes' && reviewCount ? parseInt(reviewCount) : null,
                         paperReadingFrequency
                     },
                     llmUsage: {
@@ -248,21 +260,24 @@
                     await docRef.set({
                         participantId,
                         condition: mode === 'experiment' ? 'experiment_mode' : condition,
-                        paper: mode === 'experiment' ? 'chi2025-lbw-02,chi2025-lbw-03' : currentPaper,
+                        paper: mode === 'experiment' ? paperOrder.join(',') : currentPaper,
                         mode,
                         sessionOrder: mode === 'experiment' ? sessionOrder : null,
+                        paperOrder: mode === 'experiment' ? paperOrder : null,
                         preSurvey: surveyData,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
 
                     console.log('✅ Pre-survey saved');
+                    console.log('📋 Session order:', sessionOrder);
+                    console.log('📋 Paper order:', paperOrder);
 
                     if (mode === 'experiment') {
                         const params = new URLSearchParams({
                             participantId,
                             mode: 'experiment',
                             condition: sessionOrder[0],
-                            paper: 'chi2025-lbw-02',
+                            paper: paperOrder[0],
                             sessionNumber: '1'
                         });
                         window.location.href = `index.html?${params.toString()}`;
@@ -344,9 +359,15 @@
                                         </div>
 
                                         {mode === 'experiment' && (
-                                            <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
+                                            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 space-y-1">
                                                 <p className="text-sm text-blue-800">
-                                                    <strong>실험 모드:</strong> 두 세션이 자동으로 배정되었습니다: {sessionOrder.map(c => c === 'with_llm' ? 'Reading with AI' : 'Reading without AI').join(' → ')}
+                                                    <strong>실험 모드:</strong> 두 세션이 자동으로 배정되었습니다.
+                                                </p>
+                                                <p className="text-sm text-blue-700">
+                                                    • 조건 순서: {sessionOrder.map(c => c === 'with_llm' ? 'AI 지원' : 'AI 미지원').join(' → ')}
+                                                </p>
+                                                <p className="text-sm text-blue-700">
+                                                    • 논문 순서: {paperOrder.map(p => p === 'chi2023-gan-mood-board' ? 'GAN Mood Board' : 'Farmers Sensors').join(' → ')}
                                                 </p>
                                             </div>
                                         )}
@@ -580,23 +601,47 @@
                                                 예) CHI, UIST에 1저자 논문 게재 경험 있음 → "있음" 선택
                                             </p>
                                             <div className="space-y-2">
-                                                {[
-                                                    { value: 'yes', label: '있음' },
-                                                    { value: 'no', label: '없음' }
-                                                ].map(option => (
-                                                    <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                <label className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input
+                                                        type="radio"
+                                                        name="publicationExperience"
+                                                        value="yes"
+                                                        checked={publicationExperience === 'yes'}
+                                                        onChange={(e) => setPublicationExperience(e.target.value)}
+                                                        className="w-4 h-4"
+                                                        required
+                                                    />
+                                                    <span className="text-sm text-gray-700">있음</span>
+                                                </label>
+                                                {publicationExperience === 'yes' && (
+                                                    <div className="ml-8 p-3 bg-gray-50 rounded-lg">
+                                                        <label className="block text-sm text-gray-700 mb-2">
+                                                            대략 몇 회인가요?
+                                                        </label>
                                                         <input
-                                                            type="radio"
-                                                            name="publicationExperience"
-                                                            value={option.value}
-                                                            checked={publicationExperience === option.value}
-                                                            onChange={(e) => setPublicationExperience(e.target.value)}
-                                                            className="w-4 h-4"
-                                                            required
+                                                            type="number"
+                                                            min="1"
+                                                            value={publicationCount}
+                                                            onChange={(e) => setPublicationCount(e.target.value)}
+                                                            placeholder="숫자 입력"
+                                                            className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                         />
-                                                        <span className="text-sm text-gray-700">{option.label}</span>
-                                                    </label>
-                                                ))}
+                                                    </div>
+                                                )}
+                                                <label className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input
+                                                        type="radio"
+                                                        name="publicationExperience"
+                                                        value="no"
+                                                        checked={publicationExperience === 'no'}
+                                                        onChange={(e) => {
+                                                            setPublicationExperience(e.target.value);
+                                                            setPublicationCount('');
+                                                        }}
+                                                        className="w-4 h-4"
+                                                    />
+                                                    <span className="text-sm text-gray-700">없음</span>
+                                                </label>
                                             </div>
                                         </div>
 
@@ -608,23 +653,47 @@
                                                 참여 예정은 포함되지 않습니다. 이미 리뷰어로 참여한 경험이 있는 경우에만 "있음"을 선택해주세요.
                                             </p>
                                             <div className="space-y-2">
-                                                {[
-                                                    { value: 'yes', label: '있음' },
-                                                    { value: 'no', label: '없음' }
-                                                ].map(option => (
-                                                    <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                <label className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input
+                                                        type="radio"
+                                                        name="reviewExperience"
+                                                        value="yes"
+                                                        checked={reviewExperience === 'yes'}
+                                                        onChange={(e) => setReviewExperience(e.target.value)}
+                                                        className="w-4 h-4"
+                                                        required
+                                                    />
+                                                    <span className="text-sm text-gray-700">있음</span>
+                                                </label>
+                                                {reviewExperience === 'yes' && (
+                                                    <div className="ml-8 p-3 bg-gray-50 rounded-lg">
+                                                        <label className="block text-sm text-gray-700 mb-2">
+                                                            대략 몇 회인가요?
+                                                        </label>
                                                         <input
-                                                            type="radio"
-                                                            name="reviewExperience"
-                                                            value={option.value}
-                                                            checked={reviewExperience === option.value}
-                                                            onChange={(e) => setReviewExperience(e.target.value)}
-                                                            className="w-4 h-4"
-                                                            required
+                                                            type="number"
+                                                            min="1"
+                                                            value={reviewCount}
+                                                            onChange={(e) => setReviewCount(e.target.value)}
+                                                            placeholder="숫자 입력"
+                                                            className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                         />
-                                                        <span className="text-sm text-gray-700">{option.label}</span>
-                                                    </label>
-                                                ))}
+                                                    </div>
+                                                )}
+                                                <label className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input
+                                                        type="radio"
+                                                        name="reviewExperience"
+                                                        value="no"
+                                                        checked={reviewExperience === 'no'}
+                                                        onChange={(e) => {
+                                                            setReviewExperience(e.target.value);
+                                                            setReviewCount('');
+                                                        }}
+                                                        className="w-4 h-4"
+                                                    />
+                                                    <span className="text-sm text-gray-700">없음</span>
+                                                </label>
                                             </div>
                                         </div>
 
@@ -963,7 +1032,7 @@
                                             type="submit"
                                             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
                                         >
-                                            Start Experiment →
+                                            실험 시작 →
                                         </button>
                                     </div>
                                 </div>

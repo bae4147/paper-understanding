@@ -187,18 +187,22 @@
                     // Navigate based on session number
                     if (sessionNumber === '1') {
                         // After 1st session, go to 2nd session
-                        // Get sessionOrder from Firestore
+                        // Get sessionOrder and paperOrder from Firestore
                         const userDoc = await userRef.get();
                         const userData = userDoc.data();
                         const sessionOrder = userData.sessionOrder;
+                        const paperOrder = userData.paperOrder;
 
                         const nextCondition = sessionOrder[1]; // 2nd session condition
+                        const nextPaper = paperOrder[1]; // 2nd paper
+
+                        console.log('📋 Next session - condition:', nextCondition, 'paper:', nextPaper);
 
                         const params = new URLSearchParams({
                             participantId,
                             mode,
                             condition: nextCondition,
-                            paper: 'chi2025-lbw-03', // 2nd paper
+                            paper: nextPaper,
                             sessionNumber: '2'
                         });
 
