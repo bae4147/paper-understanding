@@ -11,24 +11,176 @@
 
     <!-- Papers data -->
     <script src="papers-data.js"></script>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, addDoc, doc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDPd-Fz-PdUwc9uvXAg_xEVR5FyPWCg_zA",
+            authDomain: "paper-understanding.firebaseapp.com",
+            projectId: "paper-understanding",
+            storageBucket: "paper-understanding.firebasestorage.app",
+            messagingSenderId: "702665730649",
+            appId: "1:702665730649:web:9858bde469085a240fdf48"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Make Firebase available globally
+        window.firebaseDb = db;
+        window.firebaseCollection = collection;
+        window.firebaseAddDoc = addDoc;
+        window.firebaseDoc = doc;
+        window.firebaseSetDoc = setDoc;
+        window.firebaseServerTimestamp = serverTimestamp;
+    </script>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState } = React;
+        const { useState, useRef, useEffect } = React;
+
+        // Signature Pad Component
+        function SignaturePad({ onSignatureChange }) {
+            const canvasRef = useRef(null);
+            const [isDrawing, setIsDrawing] = useState(false);
+            const [hasSignature, setHasSignature] = useState(false);
+
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+
+                // Set up high DPI canvas
+                const dpr = window.devicePixelRatio || 1;
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width * dpr;
+                canvas.height = rect.height * dpr;
+                ctx.scale(dpr, dpr);
+
+                // Set drawing styles
+                ctx.strokeStyle = '#1e40af';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                // Fill white background
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, rect.width, rect.height);
+            }, []);
+
+            const getCoordinates = (e) => {
+                const canvas = canvasRef.current;
+                const rect = canvas.getBoundingClientRect();
+
+                if (e.touches) {
+                    return {
+                        x: e.touches[0].clientX - rect.left,
+                        y: e.touches[0].clientY - rect.top
+                    };
+                }
+                return {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+            };
+
+            const startDrawing = (e) => {
+                e.preventDefault();
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                const { x, y } = getCoordinates(e);
+
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                setIsDrawing(true);
+            };
+
+            const draw = (e) => {
+                if (!isDrawing) return;
+                e.preventDefault();
+
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                const { x, y } = getCoordinates(e);
+
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            };
+
+            const stopDrawing = () => {
+                if (isDrawing) {
+                    setIsDrawing(false);
+                    setHasSignature(true);
+
+                    // Get signature data and notify parent
+                    const canvas = canvasRef.current;
+                    const signatureData = canvas.toDataURL('image/png');
+                    onSignatureChange(signatureData);
+                }
+            };
+
+            const clearSignature = () => {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                const rect = canvas.getBoundingClientRect();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, rect.width, rect.height);
+
+                setHasSignature(false);
+                onSignatureChange(null);
+            };
+
+            return (
+                <div className="space-y-3">
+                    <div className="border-2 border-gray-300 rounded-lg bg-white relative">
+                        <canvas
+                            ref={canvasRef}
+                            className="w-full cursor-crosshair touch-none"
+                            style={{ height: '150px' }}
+                            onMouseDown={startDrawing}
+                            onMouseMove={draw}
+                            onMouseUp={stopDrawing}
+                            onMouseLeave={stopDrawing}
+                            onTouchStart={startDrawing}
+                            onTouchMove={draw}
+                            onTouchEnd={stopDrawing}
+                        />
+                        {!hasSignature && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <span className="text-gray-400 text-sm">여기에 서명해주세요</span>
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex justify-end">
+                        <button
+                            type="button"
+                            onClick={clearSignature}
+                            className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded hover:bg-gray-100"
+                        >
+                            서명 지우기
+                        </button>
+                    </div>
+                </div>
+            );
+        }
 
         function LandingPage() {
             const [mode, setMode] = useState(null); // null: mode selection, 'experiment', 'test'
             const [participantId, setParticipantId] = useState('');
             const [hasConsented, setHasConsented] = useState(false);
+            const [signatureData, setSignatureData] = useState(null);
             const [currentStep, setCurrentStep] = useState(0); // 0: welcome, 1: info, 2: consent, 3: start
 
             // Test mode specific states
             const [testCondition, setTestCondition] = useState('');
             const [testPaper, setTestPaper] = useState('');
 
-            const handleBegin = () => {
+            const handleBegin = async () => {
                 if (!participantId.trim()) {
                     alert('참여자 ID를 입력해주세요');
                     return;
@@ -37,6 +189,35 @@
                 if (mode === 'experiment' && !hasConsented) {
                     alert('동의서를 읽고 동의해주세요');
                     return;
+                }
+
+                if (mode === 'experiment' && !signatureData) {
+                    alert('서명을 완료해주세요');
+                    return;
+                }
+
+                // Save consent and signature to Firestore
+                if (mode === 'experiment') {
+                    try {
+                        const db = window.firebaseDb;
+                        const doc = window.firebaseDoc;
+                        const setDoc = window.firebaseSetDoc;
+                        const serverTimestamp = window.firebaseServerTimestamp;
+
+                        await setDoc(doc(db, 'consent', participantId.trim()), {
+                            participantId: participantId.trim(),
+                            hasConsented: true,
+                            signatureData: signatureData,
+                            consentTimestamp: serverTimestamp(),
+                            userAgent: navigator.userAgent
+                        });
+
+                        console.log('Consent saved successfully');
+                    } catch (error) {
+                        console.error('Error saving consent:', error);
+                        alert('동의서 저장 중 오류가 발생했습니다. 다시 시도해주세요.');
+                        return;
+                    }
                 }
 
                 // Navigate to pre-survey with participant ID and mode
@@ -322,7 +503,7 @@
                                         <div className="border-t border-gray-300 pt-4 mt-6">
                                             <p className="font-semibold mb-2">동의 진술</p>
                                             <p>
-                                                아래 체크박스를 선택하고 "동의합니다"를 클릭함으로써, 귀하는 다음을 확인합니다:
+                                                아래 체크박스를 선택하고 서명한 후 "동의합니다"를 클릭함으로써, 귀하는 다음을 확인합니다:
                                             </p>
                                             <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
                                                 <li>위의 정보를 읽고 이해했습니다</li>
@@ -348,6 +529,23 @@
                                     </label>
                                 </div>
 
+                                {/* Signature Section */}
+                                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                                    <p className="font-semibold text-gray-800 mb-3">참여자 서명</p>
+                                    <p className="text-sm text-gray-600 mb-4">
+                                        동의를 확인하기 위해 아래에 서명해주세요.
+                                    </p>
+                                    <SignaturePad onSignatureChange={setSignatureData} />
+                                    {signatureData && (
+                                        <div className="mt-2 flex items-center text-green-600 text-sm">
+                                            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                                            </svg>
+                                            서명이 입력되었습니다
+                                        </div>
+                                    )}
+                                </div>
+
                                 <div className="flex space-x-4">
                                     <button
                                         onClick={() => setCurrentStep(1)}
@@ -357,12 +555,27 @@
                                     </button>
                                     <button
                                         onClick={() => setCurrentStep(3)}
-                                        disabled={!hasConsented}
+                                        disabled={!hasConsented || !signatureData}
                                         className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium transition-colors"
                                     >
                                         계속하기 →
                                     </button>
                                 </div>
+                                {!hasConsented && !signatureData && (
+                                    <p className="text-sm text-gray-500 mt-3 text-center">
+                                        동의 체크박스를 선택하고 서명을 완료해야 계속할 수 있습니다.
+                                    </p>
+                                )}
+                                {hasConsented && !signatureData && (
+                                    <p className="text-sm text-gray-500 mt-3 text-center">
+                                        서명을 완료해야 계속할 수 있습니다.
+                                    </p>
+                                )}
+                                {!hasConsented && signatureData && (
+                                    <p className="text-sm text-gray-500 mt-3 text-center">
+                                        동의 체크박스를 선택해야 계속할 수 있습니다.
+                                    </p>
+                                )}
                             </div>
                         )}
 

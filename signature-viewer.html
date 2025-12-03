@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>서명 확인</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDPd-Fz-PdUwc9uvXAg_xEVR5FyPWCg_zA",
+            authDomain: "paper-understanding.firebaseapp.com",
+            projectId: "paper-understanding",
+            storageBucket: "paper-understanding.firebasestorage.app",
+            messagingSenderId: "702665730649",
+            appId: "1:702665730649:web:9858bde469085a240fdf48"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            const container = document.getElementById('signatures');
+
+            try {
+                const querySnapshot = await getDocs(collection(db, 'consent'));
+
+                if (querySnapshot.empty) {
+                    container.innerHTML = '<p class="text-gray-500">저장된 동의서가 없습니다.</p>';
+                    return;
+                }
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const card = document.createElement('div');
+                    card.className = 'bg-white rounded-lg shadow-md p-6 mb-4';
+
+                    const timestamp = data.consentTimestamp?.toDate?.()
+                        ? data.consentTimestamp.toDate().toLocaleString('ko-KR')
+                        : '시간 정보 없음';
+
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800">참여자: ${data.participantId}</h3>
+                                <p class="text-sm text-gray-500">동의 시간: ${timestamp}</p>
+                            </div>
+                            <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                                동의 완료
+                            </span>
+                        </div>
+                        <div class="border-t pt-4">
+                            <p class="text-sm font-medium text-gray-600 mb-2">서명:</p>
+                            <div class="border rounded-lg p-2 bg-gray-50 inline-block">
+                                <img src="${data.signatureData}" alt="서명" class="max-w-xs h-auto" />
+                            </div>
+                        </div>
+                    `;
+
+                    container.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Error loading signatures:', error);
+                container.innerHTML = '<p class="text-red-500">데이터 로딩 중 오류가 발생했습니다.</p>';
+            }
+        });
+    </script>
+</head>
+<body class="bg-gray-100 min-h-screen p-8">
+    <div class="max-w-2xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">동의서 서명 확인</h1>
+        <div id="signatures">
+            <p class="text-gray-500">로딩 중...</p>
+        </div>
+    </div>
+</body>
+</html>
