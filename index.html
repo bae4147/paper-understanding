@@ -1826,7 +1826,7 @@ Use markdown formatting for better readability:
                                 <>
                                     {/* Left Panel - Reading */}
                                     <div
-                                        className={`flex-1 bg-gray-50 flex flex-col overflow-hidden transition-all ${
+                                        className={`flex-1 bg-white flex flex-col overflow-hidden transition-all ${
                                             activeFocus === 'reading' ? 'border-4 border-purple-500' : 'border-4 border-transparent'
                                         }`}
                                         onMouseEnter={() => switchFocus('reading')}
@@ -1835,9 +1835,9 @@ Use markdown formatting for better readability:
                                             ref={pdfContainerRef}
                                             onScroll={handleScroll}
                                             onMouseUp={handleTextSelection}
-                                            className="flex-1 overflow-y-auto p-8"
+                                            className="flex-1 overflow-y-auto p-6"
                                         >
-                                            <div className="w-full max-w-[900px] mx-auto bg-white shadow-xl rounded-lg p-12">
+                                            <div className="w-full max-w-none">
                                                 <div
                                                     id="paper-content"
                                                     className="prose max-w-none"
