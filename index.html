@@ -1143,13 +1143,13 @@ Use markdown formatting for better readability:
                 setUploadedFiles(prev => prev.filter((_, i) => i !== index));
             };
 
-            // Simple markdown renderer
+            // Markdown renderer with nested lists, tables, blockquotes, and horizontal rules
             const renderMarkdown = (text) => {
                 if (!text) return '';
 
                 let html = text;
 
-                // Code blocks (```code```)
+                // Code blocks (```code```) - process first to avoid interference
                 html = html.replace(/```([^`]+)```/g, '<pre style="background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto; margin: 8px 0;"><code>$1</code></pre>');
 
                 // Inline code (`code`)
@@ -1164,70 +1164,133 @@ Use markdown formatting for better readability:
                 html = html.replace(/(?<!_)_([^_\n]+)_(?!_)/g, '<em>$1</em>');
 
                 // Headers (# text) - process from most specific (####) to least specific (#)
-                html = html.replace(/^#### (.+)$/gm, '<h4 style="font-size: 1.05em; font-weight: 600; margin: 10px 0 6px 0;">$1</h4>');
-                html = html.replace(/^### (.+)$/gm, '<h3 style="font-size: 1.1em; font-weight: 600; margin: 12px 0 8px 0;">$1</h3>');
-                html = html.replace(/^## (.+)$/gm, '<h2 style="font-size: 1.2em; font-weight: 600; margin: 12px 0 8px 0;">$1</h2>');
-                html = html.replace(/^# (.+)$/gm, '<h1 style="font-size: 1.3em; font-weight: 600; margin: 12px 0 8px 0;">$1</h1>');
+                html = html.replace(/^#### (.+)$/gm, '<h4 style="font-size: 1.1em; font-weight: 600; margin: 12px 0 6px 0;">$1</h4>');
+                html = html.replace(/^### (.+)$/gm, '<h3 style="font-size: 1.2em; font-weight: 600; margin: 14px 0 8px 0;">$1</h3>');
+                html = html.replace(/^## (.+)$/gm, '<h2 style="font-size: 1.35em; font-weight: 600; margin: 16px 0 10px 0;">$1</h2>');
+                html = html.replace(/^# (.+)$/gm, '<h1 style="font-size: 1.5em; font-weight: 600; margin: 16px 0 10px 0;">$1</h1>');
 
-                // Process lists by splitting into lines
+                // Horizontal rule (---, ***, ___)
+                html = html.replace(/^[-*_]{3,}$/gm, '<hr style="border: none; border-top: 1px solid #ddd; margin: 16px 0;">');
+
+                // Process tables
+                html = html.replace(/(?:^|\n)((?:\|[^\n]+\|\n)+)/g, (match, tableContent) => {
+                    const rows = tableContent.trim().split('\n');
+                    if (rows.length < 2) return match;
+
+                    let tableHtml = '<table style="border-collapse: collapse; margin: 12px 0; width: 100%;">';
+
+                    rows.forEach((row, rowIndex) => {
+                        // Skip separator row (|---|---|)
+                        if (row.match(/^\|[\s\-:]+\|$/)) return;
+
+                        const cells = row.split('|').filter(cell => cell !== '');
+                        const tag = rowIndex === 0 ? 'th' : 'td';
+                        const bgColor = rowIndex === 0 ? 'background: #f5f5f5;' : '';
+
+                        tableHtml += '<tr>';
+                        cells.forEach(cell => {
+                            tableHtml += `<${tag} style="border: 1px solid #ddd; padding: 8px; ${bgColor}">${cell.trim()}</${tag}>`;
+                        });
+                        tableHtml += '</tr>';
+                    });
+
+                    tableHtml += '</table>';
+                    return tableHtml;
+                });
+
+                // Process lines for lists and blockquotes
                 const lines = html.split('\n');
                 let result = [];
-                let inUnorderedList = false;
-                let inOrderedList = false;
+                let listStack = []; // Track nested list levels: [{type: 'ul'|'ol', indent: number}]
+                let inBlockquote = false;
+
+                const getIndentLevel = (line) => {
+                    const match = line.match(/^(\s*)/);
+                    return match ? Math.floor(match[1].length / 2) : 0;
+                };
+
+                const closeListsToLevel = (targetLevel) => {
+                    while (listStack.length > targetLevel) {
+                        const list = listStack.pop();
+                        result.push(list.type === 'ul' ? '</ul>' : '</ol>');
+                    }
+                };
 
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i];
-                    const unorderedMatch = line.match(/^[\-\*]\s+(.+)$/);
-                    const orderedMatch = line.match(/^\d+\.\s+(.+)$/);
+                    const indent = getIndentLevel(line);
+                    const trimmedLine = line.trim();
+
+                    // Blockquote (> text)
+                    const blockquoteMatch = trimmedLine.match(/^>\s*(.*)$/);
+                    if (blockquoteMatch) {
+                        closeListsToLevel(0);
+                        if (!inBlockquote) {
+                            result.push('<blockquote style="border-left: 4px solid #ddd; margin: 12px 0; padding: 8px 16px; color: #666; background: #f9f9f9;">');
+                            inBlockquote = true;
+                        }
+                        result.push(blockquoteMatch[1] + '<br>');
+                        continue;
+                    } else if (inBlockquote) {
+                        result.push('</blockquote>');
+                        inBlockquote = false;
+                    }
+
+                    // Unordered list (- or *)
+                    const unorderedMatch = trimmedLine.match(/^[\-\*]\s+(.+)$/);
+                    // Ordered list (1. 2. etc)
+                    const orderedMatch = trimmedLine.match(/^\d+\.\s+(.+)$/);
 
                     if (unorderedMatch) {
-                        if (inOrderedList) {
-                            result.push('</ol>');
-                            inOrderedList = false;
-                        }
-                        if (!inUnorderedList) {
-                            result.push('<ul style="margin: 8px 0; padding-left: 24px; list-style-type: disc;">');
-                            inUnorderedList = true;
+                        const targetLevel = indent + 1;
+
+                        // Close lists that are deeper than current
+                        closeListsToLevel(targetLevel);
+
+                        // Open new list if needed
+                        if (listStack.length < targetLevel || listStack[listStack.length - 1]?.type !== 'ul') {
+                            if (listStack.length === targetLevel && listStack[listStack.length - 1]?.type === 'ol') {
+                                result.push('</ol>');
+                                listStack.pop();
+                            }
+                            result.push('<ul style="margin: ' + (listStack.length === 0 ? '8px' : '4px') + ' 0; padding-left: 24px; list-style-type: disc;">');
+                            listStack.push({ type: 'ul', indent });
                         }
                         result.push('<li style="margin: 4px 0;">' + unorderedMatch[1] + '</li>');
                     } else if (orderedMatch) {
-                        if (inUnorderedList) {
-                            result.push('</ul>');
-                            inUnorderedList = false;
-                        }
-                        if (!inOrderedList) {
-                            result.push('<ol style="margin: 8px 0; padding-left: 24px; list-style-type: decimal;">');
-                            inOrderedList = true;
+                        const targetLevel = indent + 1;
+
+                        closeListsToLevel(targetLevel);
+
+                        if (listStack.length < targetLevel || listStack[listStack.length - 1]?.type !== 'ol') {
+                            if (listStack.length === targetLevel && listStack[listStack.length - 1]?.type === 'ul') {
+                                result.push('</ul>');
+                                listStack.pop();
+                            }
+                            result.push('<ol style="margin: ' + (listStack.length === 0 ? '8px' : '4px') + ' 0; padding-left: 24px; list-style-type: decimal;">');
+                            listStack.push({ type: 'ol', indent });
                         }
                         result.push('<li style="margin: 4px 0;">' + orderedMatch[1] + '</li>');
                     } else {
-                        if (inUnorderedList) {
-                            result.push('</ul>');
-                            inUnorderedList = false;
-                        }
-                        if (inOrderedList) {
-                            result.push('</ol>');
-                            inOrderedList = false;
-                        }
-                        // Convert empty lines to paragraph breaks, others to line breaks
-                        if (line.trim() === '') {
+                        // Not a list item - close all lists
+                        closeListsToLevel(0);
+
+                        if (trimmedLine === '') {
                             result.push('<br>');
+                        } else if (!trimmedLine.startsWith('<')) {
+                            // Regular text (not HTML tag)
+                            result.push(line + '<br>');
                         } else {
                             result.push(line);
                         }
                     }
                 }
 
-                // Close any open lists
-                if (inUnorderedList) result.push('</ul>');
-                if (inOrderedList) result.push('</ol>');
+                // Close any remaining open elements
+                closeListsToLevel(0);
+                if (inBlockquote) result.push('</blockquote>');
 
-                // Join with line breaks for non-list content
-                html = result.join('\n');
-
-                // Replace remaining newlines with <br> (but not inside lists)
-                html = html.replace(/\n(?![<])/g, '<br>');
-                html = html.replace(/\n/g, '');
+                html = result.join('');
 
                 return html;
             };
@@ -2148,7 +2211,7 @@ Use markdown formatting for better readability:
                                 <div className="bg-gray-50 rounded-lg p-6">
                                     <h3 className="font-bold text-lg text-gray-800 mb-2">안내</h3>
                                     <p className="text-gray-700">
-                                        <li>논문을 읽고 이해한 내용을 바탕으로 질문에 답해주세요. (객관식 10문제)</li>
+                                        <li>논문을 읽고 이해한 내용을 바탕으로 질문에 답해주세요. (객관식 8문제)</li>
                                         <li>답을 고르기 어려운 문제는 선지 가운데 "모름"을 선택해주세요.</li>
                                     </p>
                                 </div>
@@ -2203,7 +2266,7 @@ Use markdown formatting for better readability:
                         <div className="max-w-4xl mx-auto p-8">
                             <div className="bg-blue-50 border-l-4 border-blue-600 p-4 mb-6">
                                 <p className="text-sm">
-                                    <strong>안내: </strong>논문을 읽고 이해한 내용을 바탕으로 질문에 답해주세요. (객관식 10문제)
+                                    <strong>안내: </strong>논문을 읽고 이해한 내용을 바탕으로 질문에 답해주세요. (객관식 8문제)
                                 </p>
                             </div>
 

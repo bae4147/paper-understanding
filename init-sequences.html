@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Condition Sequence Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        .participant-badge {
+            position: relative;
+            cursor: pointer;
+        }
+        .participant-badge:hover .tooltip {
+            display: block;
+        }
+        .tooltip {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1f2937;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 10;
+            margin-bottom: 4px;
+        }
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 4px solid transparent;
+            border-top-color: #1f2937;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-8">
+    <div class="max-w-6xl mx-auto">
+        <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
+            <h1 class="text-2xl font-bold mb-6">Condition Sequence Manager</h1>
+
+            <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+                <h2 class="font-bold text-blue-800 mb-2">Condition Format</h2>
+                <p class="text-xs text-blue-600 mb-2">A = GAN Mood Board, B = Farmers Sensors</p>
+                <ul class="text-sm text-blue-700 space-y-1">
+                    <li><strong>A-with/B-without:</strong> Session1 = GAN +LLM, Session2 = Farmers -LLM</li>
+                    <li><strong>B-with/A-without:</strong> Session1 = Farmers +LLM, Session2 = GAN -LLM</li>
+                    <li><strong>A-without/B-with:</strong> Session1 = GAN -LLM, Session2 = Farmers +LLM</li>
+                    <li><strong>B-without/A-with:</strong> Session1 = Farmers -LLM, Session2 = GAN +LLM</li>
+                </ul>
+                <div class="mt-3 pt-3 border-t border-blue-200">
+                    <p class="text-xs text-blue-600"><strong>Sequence Order:</strong></p>
+                    <p class="text-xs text-blue-600">Novice: 1→2→3→4 (A-with → B-with → A-without → B-without)</p>
+                    <p class="text-xs text-blue-600">Expert: 4→3→2→1 (B-without → A-without → B-with → A-with)</p>
+                </div>
+            </div>
+
+            <!-- Initialize Section -->
+            <div class="mb-8 p-4 border rounded-lg">
+                <h2 class="font-bold text-lg mb-4">Initialize Sequences</h2>
+                <div class="flex items-center space-x-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Repetitions per condition:</label>
+                        <input type="number" id="repetitions" value="10" min="1" max="100"
+                            class="w-24 px-3 py-2 border rounded-lg">
+                    </div>
+                    <button onclick="initializeSequences()"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
+                        Initialize
+                    </button>
+                    <button onclick="clearSequences()"
+                        class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium">
+                        Clear All
+                    </button>
+                </div>
+            </div>
+
+            <!-- Manual Assignment Section -->
+            <div class="mb-8 p-4 border rounded-lg">
+                <h2 class="font-bold text-lg mb-4">Manual Assignment</h2>
+                <div class="flex items-end space-x-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Participant ID:</label>
+                        <input type="text" id="manualPid" placeholder="P001"
+                            class="w-28 px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Group:</label>
+                        <select id="manualGroup" class="px-3 py-2 border rounded-lg">
+                            <option value="novice">Novice</option>
+                            <option value="expert">Expert</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Condition:</label>
+                        <select id="manualCondition" class="px-3 py-2 border rounded-lg">
+                            <option value="A-with/B-without">A-with/B-without</option>
+                            <option value="B-with/A-without">B-with/A-without</option>
+                            <option value="A-without/B-with">A-without/B-with</option>
+                            <option value="B-without/A-with">B-without/A-with</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Date (optional):</label>
+                        <input type="datetime-local" id="manualDate"
+                            class="px-3 py-2 border rounded-lg">
+                    </div>
+                    <button onclick="manualAssign()"
+                        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
+                        Assign
+                    </button>
+                </div>
+            </div>
+
+            <!-- Refresh Button -->
+            <div class="mb-6">
+                <button onclick="viewCurrentStatus()"
+                    class="px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 font-medium">
+                    Refresh Status
+                </button>
+            </div>
+        </div>
+
+        <!-- Status Display -->
+        <div id="statusDisplay" class="space-y-6">
+            <!-- Will be populated by JS -->
+        </div>
+
+        <!-- Log Output -->
+        <div id="output" class="mt-6 p-4 bg-gray-50 rounded-lg font-mono text-sm whitespace-pre-wrap hidden"></div>
+    </div>
+
+    <script>
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDPd-Fz-PdUwc9uvXAg_xEVR5FyPWCg_zA",
+            authDomain: "paper-understanding.firebaseapp.com",
+            projectId: "paper-understanding",
+            storageBucket: "paper-understanding.firebasestorage.app",
+            messagingSenderId: "702665730649",
+            appId: "1:702665730649:web:9858bde469085a240fdf48"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const CONDITIONS = [
+            'A-with/B-without',
+            'B-with/A-without',
+            'A-without/B-with',
+            'B-without/A-with'
+        ];
+
+        // Expert uses reverse order: 4-3-2-1
+        const CONDITIONS_EXPERT = [
+            'B-without/A-with',
+            'A-without/B-with',
+            'B-with/A-without',
+            'A-with/B-without'
+        ];
+
+        const CONDITION_LABELS = {
+            'A-with/B-without': 'GAN+LLM / Farmers-LLM',
+            'B-with/A-without': 'Farmers+LLM / GAN-LLM',
+            'A-without/B-with': 'GAN-LLM / Farmers+LLM',
+            'B-without/A-with': 'Farmers-LLM / GAN+LLM'
+        };
+
+        const GROUPS = ['novice', 'expert'];
+
+        function log(message) {
+            const output = document.getElementById('output');
+            output.classList.remove('hidden');
+            output.textContent += message + '\n';
+        }
+
+        function clearLog() {
+            const output = document.getElementById('output');
+            output.textContent = '';
+            output.classList.add('hidden');
+        }
+
+        function formatDate(isoString) {
+            if (!isoString) return '';
+            const date = new Date(isoString);
+            return date.toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        async function viewCurrentStatus() {
+            const statusDisplay = document.getElementById('statusDisplay');
+            statusDisplay.innerHTML = '<p class="text-gray-500">Loading...</p>';
+
+            let html = '';
+
+            for (const group of GROUPS) {
+                const docRef = db.collection('conditionSequences').doc(group);
+                const doc = await docRef.get();
+
+                if (!doc.exists) {
+                    html += `
+                        <div class="bg-white rounded-xl shadow-lg p-6">
+                            <h2 class="text-xl font-bold mb-4 ${group === 'expert' ? 'text-purple-700' : 'text-green-700'}">
+                                ${group.toUpperCase()}
+                            </h2>
+                            <p class="text-gray-500">Not initialized yet. Please initialize sequences first.</p>
+                        </div>
+                    `;
+                    continue;
+                }
+
+                const data = doc.data();
+                const slots = data.slots || [];
+                const assigned = slots.filter(s => s.assignedTo);
+
+                // Group by condition
+                const byCondition = {};
+                for (const cond of CONDITIONS) {
+                    byCondition[cond] = slots
+                        .filter(s => s.condition === cond && s.assignedTo)
+                        .map(s => ({
+                            pid: s.assignedTo,
+                            date: s.assignedAt
+                        }));
+                }
+
+                html += `
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <h2 class="text-xl font-bold mb-4 ${group === 'expert' ? 'text-purple-700' : 'text-green-700'}">
+                            ${group.toUpperCase()}
+                            <span class="text-base font-normal text-gray-500">(total: ${assigned.length})</span>
+                        </h2>
+                        <div class="space-y-4">
+                `;
+
+                // Always display in the same order (CONDITIONS) for both groups
+                for (let i = 0; i < CONDITIONS.length; i++) {
+                    const cond = CONDITIONS[i];
+                    const participants = byCondition[cond];
+                    const totalSlots = slots.filter(s => s.condition === cond).length;
+
+                    html += `
+                        <div class="border-l-4 ${group === 'expert' ? 'border-purple-400' : 'border-green-400'} pl-4 py-2">
+                            <div class="flex items-center justify-between mb-2">
+                                <div>
+                                    <span class="font-bold text-gray-800">${cond}</span>
+                                    <span class="text-xs text-gray-400 ml-2">(${CONDITION_LABELS[cond]})</span>
+                                </div>
+                                <span class="text-sm text-gray-500">${participants.length}/${totalSlots}</span>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                    `;
+
+                    if (participants.length === 0) {
+                        html += `<span class="text-gray-400 text-sm">No participants yet</span>`;
+                    } else {
+                        for (const p of participants) {
+                            html += `
+                                <span class="participant-badge inline-block px-3 py-1 ${group === 'expert' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'} rounded-full text-sm font-medium">
+                                    ${p.pid}
+                                    <span class="tooltip">${formatDate(p.date)}</span>
+                                </span>
+                            `;
+                        }
+                    }
+
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                }
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            statusDisplay.innerHTML = html;
+        }
+
+        async function manualAssign() {
+            const pid = document.getElementById('manualPid').value.trim();
+            const group = document.getElementById('manualGroup').value;
+            const condition = document.getElementById('manualCondition').value;
+            const dateInput = document.getElementById('manualDate').value;
+
+            if (!pid) {
+                alert('Please enter a Participant ID');
+                return;
+            }
+
+            const assignedAt = dateInput ? new Date(dateInput).toISOString() : new Date().toISOString();
+
+            clearLog();
+
+            try {
+                const sequenceRef = db.collection('conditionSequences').doc(group);
+
+                await db.runTransaction(async (transaction) => {
+                    const sequenceDoc = await transaction.get(sequenceRef);
+
+                    if (!sequenceDoc.exists) {
+                        throw new Error(`Group "${group}" not initialized. Please initialize first.`);
+                    }
+
+                    const data = sequenceDoc.data();
+                    const slots = data.slots || [];
+
+                    // Check if PID already assigned
+                    const alreadyAssigned = slots.find(s => s.assignedTo === pid);
+                    if (alreadyAssigned) {
+                        throw new Error(`${pid} is already assigned to ${alreadyAssigned.condition}`);
+                    }
+
+                    // Find first available slot with this condition
+                    let slotIndex = -1;
+                    for (let i = 0; i < slots.length; i++) {
+                        if (slots[i].condition === condition && !slots[i].assignedTo) {
+                            slotIndex = i;
+                            break;
+                        }
+                    }
+
+                    if (slotIndex === -1) {
+                        throw new Error(`No available slots for condition "${condition}" in ${group}`);
+                    }
+
+                    // Assign
+                    slots[slotIndex] = {
+                        ...slots[slotIndex],
+                        assignedTo: pid,
+                        assignedAt: assignedAt
+                    };
+
+                    transaction.update(sequenceRef, { slots });
+                });
+
+                log(`Successfully assigned ${pid} to ${group}/${condition}`);
+                alert(`Assigned ${pid} to ${group} - ${condition}`);
+
+                // Clear inputs
+                document.getElementById('manualPid').value = '';
+                document.getElementById('manualDate').value = '';
+
+                // Refresh display
+                await viewCurrentStatus();
+
+            } catch (error) {
+                log(`Error: ${error.message}`);
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        async function initializeSequences() {
+            clearLog();
+            const repetitions = parseInt(document.getElementById('repetitions').value);
+
+            if (!confirm(`This will create ${CONDITIONS.length * repetitions} slots for each group (novice, expert).\n\nAre you sure?`)) {
+                return;
+            }
+
+            log(`Initializing sequences with ${repetitions} repetitions per condition...`);
+
+            for (const group of GROUPS) {
+                const docRef = db.collection('conditionSequences').doc(group);
+                const existing = await docRef.get();
+
+                if (existing.exists) {
+                    const data = existing.data();
+                    const assignedCount = data.slots.filter(s => s.assignedTo).length;
+
+                    if (assignedCount > 0) {
+                        log(`ERROR: ${group} already has ${assignedCount} assigned participants. Cannot overwrite.`);
+                        continue;
+                    }
+                }
+
+                // Use reverse order for expert group
+                const conditionsForGroup = group === 'expert' ? CONDITIONS_EXPERT : CONDITIONS;
+
+                const slots = [];
+                for (let rep = 0; rep < repetitions; rep++) {
+                    for (const condition of conditionsForGroup) {
+                        slots.push({
+                            condition: condition,
+                            assignedTo: null,
+                            assignedAt: null,
+                            repetition: rep + 1
+                        });
+                    }
+                }
+
+                await docRef.set({
+                    group: group,
+                    totalSlots: slots.length,
+                    conditions: conditionsForGroup,
+                    slots: slots,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                log(`Created ${slots.length} slots for ${group}`);
+            }
+
+            log('Initialization complete!');
+            await viewCurrentStatus();
+        }
+
+        async function clearSequences() {
+            const confirmText = prompt('WARNING: This will delete ALL sequence data!\n\nType "DELETE" to confirm:');
+            if (confirmText !== 'DELETE') {
+                return;
+            }
+
+            clearLog();
+            log('Clearing all sequences...');
+
+            for (const group of GROUPS) {
+                await db.collection('conditionSequences').doc(group).delete();
+                log(`Deleted: ${group}`);
+            }
+
+            log('All sequences cleared');
+            await viewCurrentStatus();
+        }
+
+        // Load on page load
+        window.addEventListener('DOMContentLoaded', viewCurrentStatus);
+    </script>
+</body>
+</html>

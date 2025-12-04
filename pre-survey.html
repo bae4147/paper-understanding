@@ -54,22 +54,7 @@
                     setParticipantId(urlPid);
                 }
                 setMode(urlMode);
-
-                if (urlMode === 'experiment') {
-                    // Randomize condition order
-                    const condOrder = Math.random() < 0.5
-                        ? ['with_llm', 'without_llm']
-                        : ['without_llm', 'with_llm'];
-                    setSessionOrder(condOrder);
-                    console.log('🎲 Randomized condition order:', condOrder);
-
-                    // Randomize paper order
-                    const papOrder = Math.random() < 0.5
-                        ? ['chi2023-gan-mood-board', 'chi2023-farmers-sensors']
-                        : ['chi2023-farmers-sensors', 'chi2023-gan-mood-board'];
-                    setPaperOrder(papOrder);
-                    console.log('🎲 Randomized paper order:', papOrder);
-                }
+                // Note: sessionOrder and paperOrder will be assigned from DB after survey submission
             }, []);
 
             // Section 1: Demographics
@@ -206,6 +191,90 @@
                 });
             };
 
+            // Validate PID format: P + 3 digits (e.g., P001, P325)
+            const isValidParticipantId = (pid) => {
+                return /^P\d{3}$/.test(pid);
+            };
+
+            // Determine group based on publication experience
+            const determineGroup = () => {
+                return publicationExperience === 'yes' ? 'expert' : 'novice';
+            };
+
+            // Assign condition from DB sequence using transaction
+            const assignConditionFromSequence = async (group, pid) => {
+                const sequenceRef = db.collection('conditionSequences').doc(group);
+
+                return await db.runTransaction(async (transaction) => {
+                    const sequenceDoc = await transaction.get(sequenceRef);
+
+                    if (!sequenceDoc.exists) {
+                        throw new Error(`Sequence for group "${group}" not found. Please initialize the database.`);
+                    }
+
+                    const data = sequenceDoc.data();
+                    const slots = data.slots || [];
+
+                    // Find first unassigned slot
+                    let assignedSlot = null;
+                    let slotIndex = -1;
+
+                    for (let i = 0; i < slots.length; i++) {
+                        if (!slots[i].assignedTo) {
+                            assignedSlot = slots[i];
+                            slotIndex = i;
+                            break;
+                        }
+                    }
+
+                    if (!assignedSlot) {
+                        throw new Error(`No available slots for group "${group}". All conditions have been assigned.`);
+                    }
+
+                    // Check if this PID is already assigned somewhere (defensive check)
+                    const alreadyAssigned = slots.find(s => s.assignedTo === pid);
+                    if (alreadyAssigned) {
+                        throw new Error(`PID "${pid}" is already assigned to a condition.`);
+                    }
+
+                    // Assign PID to this slot
+                    slots[slotIndex] = {
+                        ...assignedSlot,
+                        assignedTo: pid,
+                        assignedAt: new Date().toISOString()
+                    };
+
+                    transaction.update(sequenceRef, { slots });
+
+                    console.log(`✅ Assigned ${pid} to slot ${slotIndex}: ${assignedSlot.condition}`);
+
+                    return assignedSlot;
+                });
+            };
+
+            // Parse condition string like "A-with/B-without" into sessionOrder and paperOrder
+            const parseCondition = (conditionStr) => {
+                // Format: "A-with/B-without" means Session1=A with LLM, Session2=B without LLM
+                // A = chi2023-gan-mood-board, B = chi2023-farmers-sensors
+                const [session1, session2] = conditionStr.split('/');
+
+                const parseSession = (s) => {
+                    const [paper, llm] = s.split('-');
+                    return {
+                        paper: paper === 'A' ? 'chi2023-gan-mood-board' : 'chi2023-farmers-sensors',
+                        condition: llm === 'with' ? 'with_llm' : 'without_llm'
+                    };
+                };
+
+                const s1 = parseSession(session1);
+                const s2 = parseSession(session2);
+
+                return {
+                    sessionOrder: [s1.condition, s2.condition],
+                    paperOrder: [s1.paper, s2.paper]
+                };
+            };
+
             const handleSubmit = async (e) => {
                 e.preventDefault();
 
@@ -217,13 +286,53 @@
                 if (!validateSection3()) {
                     return;
                 }
+
+                let finalSessionOrder = [];
+                let finalPaperOrder = [];
+                let assignedGroup = null;
+                let assignedCondition = null;
+
+                // For experiment mode with valid PID, assign from DB sequence
+                if (mode === 'experiment' && isValidParticipantId(participantId)) {
+                    try {
+                        assignedGroup = determineGroup();
+                        console.log(`📋 Participant ${participantId} -> Group: ${assignedGroup}`);
+
+                        const slot = await assignConditionFromSequence(assignedGroup, participantId);
+                        assignedCondition = slot.condition;
+
+                        const parsed = parseCondition(slot.condition);
+                        finalSessionOrder = parsed.sessionOrder;
+                        finalPaperOrder = parsed.paperOrder;
+
+                        console.log(`📋 Assigned condition: ${assignedCondition}`);
+                        console.log(`📋 Session order: ${finalSessionOrder}`);
+                        console.log(`📋 Paper order: ${finalPaperOrder}`);
+                    } catch (error) {
+                        console.error('Error assigning condition:', error);
+                        alert(`조건 배정 중 오류가 발생했습니다: ${error.message}`);
+                        return;
+                    }
+                } else if (mode === 'experiment') {
+                    // Invalid PID format in experiment mode - use random assignment (for testing)
+                    console.log(`⚠️ Invalid PID format "${participantId}" - using random assignment`);
+                    finalSessionOrder = Math.random() < 0.5
+                        ? ['with_llm', 'without_llm']
+                        : ['without_llm', 'with_llm'];
+                    finalPaperOrder = Math.random() < 0.5
+                        ? ['chi2023-gan-mood-board', 'chi2023-farmers-sensors']
+                        : ['chi2023-farmers-sensors', 'chi2023-gan-mood-board'];
+                }
+
                 const surveyData = {
                     participantId,
                     condition: mode === 'experiment' ? 'experiment_mode' : condition,
-                    paper: mode === 'experiment' ? paperOrder.join(',') : currentPaper,
+                    paper: mode === 'experiment' ? finalPaperOrder.join(',') : currentPaper,
                     mode,
-                    sessionOrder: mode === 'experiment' ? sessionOrder : null,
-                    paperOrder: mode === 'experiment' ? paperOrder : null,
+                    sessionOrder: mode === 'experiment' ? finalSessionOrder : null,
+                    paperOrder: mode === 'experiment' ? finalPaperOrder : null,
+                    assignedGroup: assignedGroup,
+                    assignedCondition: assignedCondition,
                     demographics: {
                         age: parseInt(age),
                         gender,
@@ -260,24 +369,26 @@
                     await docRef.set({
                         participantId,
                         condition: mode === 'experiment' ? 'experiment_mode' : condition,
-                        paper: mode === 'experiment' ? paperOrder.join(',') : currentPaper,
+                        paper: mode === 'experiment' ? finalPaperOrder.join(',') : currentPaper,
                         mode,
-                        sessionOrder: mode === 'experiment' ? sessionOrder : null,
-                        paperOrder: mode === 'experiment' ? paperOrder : null,
+                        sessionOrder: mode === 'experiment' ? finalSessionOrder : null,
+                        paperOrder: mode === 'experiment' ? finalPaperOrder : null,
+                        assignedGroup: assignedGroup,
+                        assignedCondition: assignedCondition,
                         preSurvey: surveyData,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
 
                     console.log('✅ Pre-survey saved');
-                    console.log('📋 Session order:', sessionOrder);
-                    console.log('📋 Paper order:', paperOrder);
+                    console.log('📋 Session order:', finalSessionOrder);
+                    console.log('📋 Paper order:', finalPaperOrder);
 
                     if (mode === 'experiment') {
                         const params = new URLSearchParams({
                             participantId,
                             mode: 'experiment',
-                            condition: sessionOrder[0],
-                            paper: paperOrder[0],
+                            condition: finalSessionOrder[0],
+                            paper: finalPaperOrder[0],
                             sessionNumber: '1'
                         });
                         window.location.href = `index.html?${params.toString()}`;
@@ -361,13 +472,13 @@
                                         {mode === 'experiment' && (
                                             <div className="bg-blue-50 border-l-4 border-blue-500 p-4 space-y-1">
                                                 <p className="text-sm text-blue-800">
-                                                    <strong>실험 모드:</strong> 두 세션이 자동으로 배정되었습니다.
+                                                    <strong>실험 모드:</strong> 설문 완료 후 조건이 자동 배정됩니다.
                                                 </p>
                                                 <p className="text-sm text-blue-700">
-                                                    • 조건 순서: {sessionOrder.map(c => c === 'with_llm' ? 'AI 지원' : 'AI 미지원').join(' → ')}
+                                                    • 참여자 ID 형식: P + 3자리 숫자 (예: P001, P325)
                                                 </p>
                                                 <p className="text-sm text-blue-700">
-                                                    • 논문 순서: {paperOrder.map(p => p === 'chi2023-gan-mood-board' ? 'GAN Mood Board' : 'Farmers Sensors').join(' → ')}
+                                                    • 논문 게재 경험에 따라 그룹이 결정됩니다
                                                 </p>
                                             </div>
                                         )}
