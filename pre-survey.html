@@ -90,7 +90,7 @@
                 '번역 (Translation)',
                 '코딩 도움 (Code debugging, generation)',
                 '아이디어 생성 (Ideation, brainstorming)',
-                '논문 읽기 (Paper reading)',
+                '읽기 지원 (Reading)',
                 '글쓰기 지원 (Writing assistance)'
             ];
 
@@ -125,12 +125,8 @@
             };
 
             const validateSection3 = () => {
-                if (!llmFrequency) {
+                if (!llmFrequency || !llmPaperReadingFrequency) {
                     alert('Section 3의 모든 필수 항목을 입력해주세요.');
-                    return false;
-                }
-                if (llmPurpose.includes('논문 읽기 (Paper reading)') && !llmPaperReadingFrequency) {
-                    alert('논문 읽기를 선택하신 경우 LLM 사용 빈도를 입력해주세요.');
                     return false;
                 }
                 return true;
@@ -705,7 +701,7 @@
 
                                         <div>
                                             <label className="block text-sm font-bold text-gray-800 mb-2">
-                                                CHI, UIST 또는 Ubicomp에 full paper를 1저자로 게재한 경험이 있으신가요? *
+                                                CHI, UIST, Ubicomp, CSCW 또는 VIS에 full paper를 1저자로 게재한 경험이 있으신가요? *
                                             </label>
                                             <p className="text-sm text-gray-500 mb-3">
                                                 예) CHI에 1저자 논문 게재 경험 있음 → "있음" 선택<br/>
@@ -758,7 +754,7 @@
 
                                         <div>
                                             <label className="block text-sm font-bold text-gray-800 mb-2">
-                                                CHI, UIST 또는 Ubicomp에서 full paper에 대한 peer reviewer로 참여한 경험이 있으신가요? *
+                                                CHI, UIST, Ubicomp, CSCW 또는 VIS에서 full paper에 대한 peer reviewer로 참여한 경험이 있으신가요? *
                                             </label>
                                             <p className="text-sm text-gray-500 mb-3">
                                                 참여 예정은 포함되지 않습니다. 이미 리뷰어로 참여한 경험이 있는 경우에만 "있음"을 선택해주세요.
@@ -872,10 +868,10 @@
                                             <div className="space-y-2">
                                                 {[
                                                     { value: 'none', label: '사용하지 않음' },
-                                                    { value: 'monthly-1-2', label: '월 1-2회' },
-                                                    { value: 'monthly-3-4', label: '월 3-4회' },
-                                                    { value: 'weekly-1-2', label: '주 1-2회' },
-                                                    { value: 'weekly-3-plus', label: '주 3회 이상' }
+                                                    { value: 'rarely', label: '가끔 (월 1–2회)' },
+                                                    { value: 'sometimes', label: '종종 (주 1–2회)' },
+                                                    { value: 'often', label: '자주 (주 3–5회)' },
+                                                    { value: 'daily', label: '거의 매일' }
                                                 ].map(option => (
                                                     <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
                                                         <input
@@ -963,89 +959,6 @@
                                                                         <span className="text-xs text-gray-400">매우 신뢰함</span>
                                                                     </div>
                                                                 </div>
-
-                                                                {/* Paper Reading Specific Questions */}
-                                                                {purpose === '논문 읽기 (Paper reading)' && (
-                                                                    <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
-                                                                        <div>
-                                                                            <label className="block text-xs font-medium text-gray-600 mb-2">
-                                                                                지난 1개월간 논문을 읽을 때 LLM을 얼마나 자주 사용하셨나요? *
-                                                                            </label>
-                                                                            <div className="space-y-1">
-                                                                                {[
-                                                                                    { value: 'monthly-1-2', label: '월 1-2회' },
-                                                                                    { value: 'monthly-3-4', label: '월 3-4회' },
-                                                                                    { value: 'weekly-2-3', label: '주 2-3회' },
-                                                                                    { value: 'daily', label: '거의 매일 (주 5회 이상)' }
-                                                                                ].map(option => (
-                                                                                    <label key={option.value} className="flex items-center space-x-2 p-2 border border-gray-200 rounded hover:bg-white cursor-pointer">
-                                                                                        <input
-                                                                                            type="radio"
-                                                                                            name="llmPaperReadingFrequency"
-                                                                                            value={option.value}
-                                                                                            checked={llmPaperReadingFrequency === option.value}
-                                                                                            onChange={(e) => setLlmPaperReadingFrequency(e.target.value)}
-                                                                                            className="w-4 h-4"
-                                                                                        />
-                                                                                        <span className="text-xs text-gray-700">{option.label}</span>
-                                                                                    </label>
-                                                                                ))}
-                                                                            </div>
-                                                                        </div>
-
-                                                                        <div>
-                                                                            <label className="block text-xs font-medium text-gray-600 mb-2">
-                                                                                논문 읽기/정리 시 주로 LLM을 어떻게 활용하셨나요? (복수 선택 가능)
-                                                                            </label>
-                                                                            <div className="space-y-1">
-                                                                                {paperReadingMethodOptions.map(method => (
-                                                                                    <label key={method} className="flex items-center space-x-2 p-2 border border-gray-200 rounded hover:bg-white cursor-pointer">
-                                                                                        <input
-                                                                                            type="checkbox"
-                                                                                            checked={llmPaperReadingMethods.includes(method)}
-                                                                                            onChange={() => {
-                                                                                                if (llmPaperReadingMethods.includes(method)) {
-                                                                                                    setLlmPaperReadingMethods(llmPaperReadingMethods.filter(m => m !== method));
-                                                                                                } else {
-                                                                                                    setLlmPaperReadingMethods([...llmPaperReadingMethods, method]);
-                                                                                                }
-                                                                                            }}
-                                                                                            className="w-4 h-4"
-                                                                                        />
-                                                                                        <span className="text-xs text-gray-700">{method}</span>
-                                                                                    </label>
-                                                                                ))}
-                                                                                <label className="flex items-start space-x-2 p-2 border border-gray-200 rounded hover:bg-white cursor-pointer">
-                                                                                    <input
-                                                                                        type="checkbox"
-                                                                                        checked={llmPaperReadingMethods.includes('기타')}
-                                                                                        onChange={() => {
-                                                                                            if (llmPaperReadingMethods.includes('기타')) {
-                                                                                                setLlmPaperReadingMethods(llmPaperReadingMethods.filter(m => m !== '기타'));
-                                                                                                setLlmPaperReadingMethodsOther('');
-                                                                                            } else {
-                                                                                                setLlmPaperReadingMethods([...llmPaperReadingMethods, '기타']);
-                                                                                            }
-                                                                                        }}
-                                                                                        className="w-4 h-4 mt-1"
-                                                                                    />
-                                                                                    <div className="flex-1">
-                                                                                        <span className="text-xs text-gray-700">기타:</span>
-                                                                                        {llmPaperReadingMethods.includes('기타') && (
-                                                                                            <input
-                                                                                                type="text"
-                                                                                                value={llmPaperReadingMethodsOther}
-                                                                                                onChange={(e) => setLlmPaperReadingMethodsOther(e.target.value)}
-                                                                                                className="mt-1 w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                                                                                                placeholder="직접 입력"
-                                                                                            />
-                                                                                        )}
-                                                                                    </div>
-                                                                                </label>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                )}
                                                             </div>
                                                         )}
                                                     </div>
@@ -1128,7 +1041,74 @@
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                지난 1개월간 논문을 읽을 때 LLM을 얼마나 자주 사용하셨나요? *
+                                            </label>
+                                            <div className="space-y-2">
+                                                {[
+                                                    { value: 'none', label: '사용하지 않음' },
+                                                    { value: 'rarely', label: '가끔 (월 1–2회)' },
+                                                    { value: 'sometimes', label: '종종 (주 1–2회)' },
+                                                    { value: 'often', label: '자주 (주 3–5회)' },
+                                                    { value: 'daily', label: '거의 매일' }
+                                                ].map(option => (
+                                                    <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="llmPaperReadingFrequency"
+                                                            value={option.value}
+                                                            checked={llmPaperReadingFrequency === option.value}
+                                                            onChange={(e) => setLlmPaperReadingFrequency(e.target.value)}
+                                                            className="w-4 h-4"
+                                                            required
+                                                        />
+                                                        <span className="text-sm text-gray-700">{option.label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                                                논문 읽기/정리 시 주로 LLM을 어떻게 활용하셨나요? (복수 선택 가능)
+                                            </label>
+                                            <div className="space-y-2">
+                                                {paperReadingMethodOptions.map(method => (
+                                                    <label key={method} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={llmPaperReadingMethods.includes(method)}
+                                                            onChange={() => handlePaperReadingMethodToggle(method)}
+                                                            className="w-4 h-4"
+                                                        />
+                                                        <span className="text-sm text-gray-700">{method}</span>
+                                                    </label>
+                                                ))}
+                                                <label className="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={llmPaperReadingMethods.includes('기타')}
+                                                        onChange={() => handlePaperReadingMethodToggle('기타')}
+                                                        className="w-4 h-4 mt-0.5"
+                                                    />
+                                                    <div className="flex-1">
+                                                        <span className="text-sm text-gray-700">기타:</span>
+                                                        {llmPaperReadingMethods.includes('기타') && (
+                                                            <input
+                                                                type="text"
+                                                                value={llmPaperReadingMethodsOther}
+                                                                onChange={(e) => setLlmPaperReadingMethodsOther(e.target.value)}
+                                                                className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                                placeholder="직접 입력"
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    
+                                        </div>
 
                                     {/* Section 3 Navigation */}
                                     <div className="flex justify-between mt-6 pt-6 border-t">
