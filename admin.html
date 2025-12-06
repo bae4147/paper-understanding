@@ -58,30 +58,60 @@
                 try {
                     const experimentsQuery = db.collectionGroup('experiments');
                     const snapshot = await experimentsQuery.get();
-                    
+
                     let experimentsData = snapshot.docs.map(doc => {
                         const data = doc.data();
+                        const participantId = data.participantId || doc.ref.parent.parent.id;
                         return {
                             id: doc.id,
+                            docRef: doc.ref,
+                            participantId: participantId,
                             ...data,
                             events: data.reading?.events || [],
                             startedAt: data.startedAt?.toDate?.() || data.createdAt,
                             completedAt: data.completedAt?.toDate?.() || null
                         };
                     });
-                    
+
                     experimentsData.sort((a, b) => {
                         const timeA = a.startedAt instanceof Date ? a.startedAt.getTime() : (a.startedAt || 0);
                         const timeB = b.startedAt instanceof Date ? b.startedAt.getTime() : (b.startedAt || 0);
                         return timeB - timeA;
                     });
-                    
+
                     setExperiments(experimentsData);
                     console.log('Loaded:', experimentsData.length, 'experiments');
                 } catch (error) {
                     console.error('Error loading:', error);
                 } finally {
                     setLoading(false);
+                }
+            };
+
+            const isValidParticipantId = (pid) => {
+                return /^P\d{3}$/.test(pid);
+            };
+
+            const handleDelete = async (exp) => {
+                // Check if participant ID is in protected format (P***)
+                if (isValidParticipantId(exp.participantId)) {
+                    alert(`Cannot delete experiment for participant ${exp.participantId}. Protected participant IDs (P***) cannot be deleted.`);
+                    return;
+                }
+
+                const confirmMsg = `Are you sure you want to delete the experiment for participant "${exp.participantId}"?\n\nCondition: ${exp.condition}\nPaper: ${exp.paper}\nEvents: ${exp.events?.length || 0}`;
+
+                if (!confirm(confirmMsg)) {
+                    return;
+                }
+
+                try {
+                    await exp.docRef.delete();
+                    alert(`Successfully deleted experiment for participant ${exp.participantId}`);
+                    loadExperiments(); // Reload the list
+                } catch (error) {
+                    console.error('Error deleting experiment:', error);
+                    alert(`Failed to delete experiment: ${error.message}`);
                 }
             };
 
@@ -1219,7 +1249,7 @@
                                             Completed
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            Action
+                                            Actions
                                         </th>
                                     </tr>
                                 </thead>
@@ -1242,15 +1272,29 @@
                                                 {exp.completedAt ? new Date(exp.completedAt).toLocaleString() : 'N/A'}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <button
-                                                    onClick={() => {
-                                                        setSelectedExperiment(exp);
-                                                        setView('detail');
-                                                    }}
-                                                    className="text-blue-600 hover:text-blue-800 text-sm"
-                                                >
-                                                    View Details →
-                                                </button>
+                                                <div className="flex items-center space-x-3">
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedExperiment(exp);
+                                                            setView('detail');
+                                                        }}
+                                                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                                    >
+                                                        View
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(exp)}
+                                                        disabled={isValidParticipantId(exp.participantId)}
+                                                        className={`text-sm font-medium ${
+                                                            isValidParticipantId(exp.participantId)
+                                                                ? 'text-gray-300 cursor-not-allowed'
+                                                                : 'text-red-600 hover:text-red-800'
+                                                        }`}
+                                                        title={isValidParticipantId(exp.participantId) ? 'Protected participant (P***)' : 'Delete experiment'}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
