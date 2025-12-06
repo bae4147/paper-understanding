@@ -13,7 +13,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, query, where, updateDoc, doc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyDPd-Fz-PdUwc9uvXAg_xEVR5FyPWCg_zA",
@@ -32,6 +32,8 @@
         window.firebaseGetDocs = getDocs;
         window.firebaseQuery = query;
         window.firebaseWhere = where;
+        window.firebaseUpdateDoc = updateDoc;
+        window.firebaseDoc = doc;
     </script>
 </head>
 <body>
@@ -44,9 +46,13 @@
             const [data, setData] = useState([]);
             const [loading, setLoading] = useState(true);
             const [viewMode, setViewMode] = useState('condition'); // 'condition' or 'paper'
+            const [questionData, setQuestionData] = useState({});
+            const [regrading, setRegrading] = useState(false);
+            const [fixingData, setFixingData] = useState(false);
 
             useEffect(() => {
                 loadData();
+                loadQuestionData();
             }, []);
 
             const loadData = async () => {
@@ -56,49 +62,38 @@
                     const snapshot = await window.firebaseGetDocs(usersRef);
 
                     const allData = [];
-                    snapshot.forEach((doc) => {
-                        const userData = doc.data();
-                        const participantId = doc.id;
 
-                        // 각 세션 데이터를 개별 항목으로 추가
-                        for (let session = 1; session <= 2; session++) {
-                            const preSurvey = userData[`preSurvey_session${session}`];
-                            const postSurvey = userData[`postSurvey_session${session}`];
-                            const experiments = userData.experiments;
+                    for (const userDoc of snapshot.docs) {
+                        const participantId = userDoc.id;
+                        const userData = userDoc.data();
 
-                            if (preSurvey || postSurvey || experiments) {
-                                // experiments에서 해당 세션의 quiz와 condition 정보 찾기
-                                let quizAnswers = null;
-                                let condition = null;
-                                let paperId = null;
-                                let timestamp = null;
+                        // experiments 서브컬렉션 읽기
+                        const experimentsRef = window.firebaseCollection(userDoc.ref, 'experiments');
+                        const experimentsSnapshot = await window.firebaseGetDocs(experimentsRef);
 
-                                if (experiments) {
-                                    // experiments 객체에서 세션 찾기
-                                    Object.values(experiments).forEach(exp => {
-                                        if (exp.sessionNumber === session) {
-                                            quizAnswers = exp.quiz;
-                                            condition = exp.condition;
-                                            paperId = exp.paper;
-                                            timestamp = exp.timestamp;
-                                        }
-                                    });
-                                }
+                        experimentsSnapshot.forEach((expDoc) => {
+                            const expData = expDoc.data();
+                            const sessionNumber = expData.sessionNumber;
 
-                                allData.push({
-                                    id: `${participantId}_session${session}`,
-                                    participantId,
-                                    sessionNumber: session,
-                                    preSurvey,
-                                    postSurvey,
-                                    quizAnswers,
-                                    condition,
-                                    paperId,
-                                    timestamp
-                                });
-                            }
-                        }
-                    });
+                            // preSurvey는 첫 세션만 users 문서에 저장됨
+                            // postSurvey는 세션별로 저장됨
+                            const preSurvey = sessionNumber === 1 ? userData.preSurvey : null;
+                            const postSurvey = userData[`postSurvey_session${sessionNumber}`];
+
+                            allData.push({
+                                id: expDoc.id,
+                                participantId,
+                                sessionNumber,
+                                preSurvey,
+                                postSurvey,
+                                quizAnswers: expData.quiz,
+                                condition: expData.condition,
+                                paperId: expData.paper,
+                                timestamp: expData.timestamp,
+                                accuracy: expData.accuracy
+                            });
+                        });
+                    }
 
                     setData(allData);
                 } catch (error) {
@@ -187,12 +182,183 @@
                 return stats;
             };
 
-            // Quiz 점수 계산 (정답 데이터가 필요함)
+            // 정답 데이터 로드
+            const loadQuestionData = async () => {
+                try {
+                    const papers = [
+                        'chi2023-gan-mood-board',
+                        'chi2023-farmers-sensors',
+                        'chi2025-lbw-02',
+                        'chi2025-lbw-03'
+                    ];
+
+                    const loadedData = {};
+                    for (const paperId of papers) {
+                        const response = await fetch(`questions_data/${paperId}.json`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            loadedData[paperId] = data;
+                        }
+                    }
+                    setQuestionData(loadedData);
+                } catch (error) {
+                    console.error('정답 데이터 로딩 오류:', error);
+                }
+            };
+
+            // Quiz 점수 계산 (정답과 비교)
             const calculateQuizScore = (answers, paperId) => {
-                if (!answers) return 0;
-                // 여기서는 임시로 답변 개수만 반환
-                // 실제로는 정답 데이터와 비교 필요
-                return Object.keys(answers).length;
+                if (!answers || !questionData[paperId]) return 0;
+
+                const questions = questionData[paperId].questions;
+                let correct = 0;
+                let total = 0;
+
+                questions.forEach(q => {
+                    const userAnswer = answers[q.id];
+                    if (userAnswer !== undefined) {
+                        total++;
+                        if (userAnswer === q.correctAnswer) {
+                            correct++;
+                        }
+                    }
+                });
+
+                return total > 0 ? (correct / total) * 100 : 0;
+            };
+
+            // 모든 참가자의 quiz 데이터 구조 수정 (quiz.answers -> quiz)
+            const fixP004QuizData = async () => {
+                if (!confirm('모든 P### 참가자의 quiz 데이터 구조를 수정하시겠습니까?\n(quiz.answers -> quiz로 변경)')) {
+                    return;
+                }
+
+                setFixingData(true);
+                try {
+                    const usersRef = window.firebaseCollection(window.firebaseDb, 'users');
+                    const snapshot = await window.firebaseGetDocs(usersRef);
+
+                    let fixedCount = 0;
+                    let skippedCount = 0;
+
+                    for (const userDoc of snapshot.docs) {
+                        const participantId = userDoc.id;
+
+                        // P### 형태만 처리
+                        if (!/^P\d{3}$/.test(participantId)) {
+                            continue;
+                        }
+
+                        const experimentsRef = window.firebaseCollection(userDoc.ref, 'experiments');
+                        const experimentsSnapshot = await window.firebaseGetDocs(experimentsRef);
+
+                        for (const expDoc of experimentsSnapshot.docs) {
+                            const expData = expDoc.data();
+
+                            // quiz.answers 구조인 경우 수정
+                            if (expData.quiz && expData.quiz.answers && typeof expData.quiz.answers === 'object') {
+                                const fixedQuiz = expData.quiz.answers;
+
+                                const expDocRef = window.firebaseDoc(
+                                    window.firebaseDb,
+                                    'users',
+                                    participantId,
+                                    'experiments',
+                                    expDoc.id
+                                );
+
+                                await window.firebaseUpdateDoc(expDocRef, {
+                                    quiz: fixedQuiz
+                                });
+
+                                fixedCount++;
+                                console.log(`✅ ${participantId} - ${expDoc.id} 수정 완료: quiz.answers -> quiz`);
+                            } else {
+                                skippedCount++;
+                                console.log(`✓ ${participantId} - ${expDoc.id} 스킵 (이미 올바른 구조)`);
+                            }
+                        }
+                    }
+
+                    alert(`Quiz 데이터 구조 수정 완료!\n수정: ${fixedCount}개\n스킵: ${skippedCount}개`);
+
+                    // 데이터 새로고침
+                    await loadData();
+                } catch (error) {
+                    console.error('Quiz 데이터 수정 오류:', error);
+                    alert('데이터 수정 중 오류가 발생했습니다.');
+                } finally {
+                    setFixingData(false);
+                }
+            };
+
+            // 퀴즈 재채점 및 Firebase 업데이트
+            const regradeAllQuizzes = async () => {
+                if (!confirm('모든 참가자의 퀴즈를 재채점하고 accuracy를 Firebase에 저장하시겠습니까?')) {
+                    return;
+                }
+
+                setRegrading(true);
+                try {
+                    const usersRef = window.firebaseCollection(window.firebaseDb, 'users');
+                    const snapshot = await window.firebaseGetDocs(usersRef);
+
+                    let processedCount = 0;
+                    let errorCount = 0;
+
+                    for (const userDoc of snapshot.docs) {
+                        const participantId = userDoc.id;
+
+                        // P### 형태만 처리
+                        if (!/^P\d{3}$/.test(participantId)) {
+                            continue;
+                        }
+
+                        // experiments 서브컬렉션 읽기
+                        const experimentsRef = window.firebaseCollection(userDoc.ref, 'experiments');
+                        const experimentsSnapshot = await window.firebaseGetDocs(experimentsRef);
+
+                        for (const expDoc of experimentsSnapshot.docs) {
+                            const expData = expDoc.data();
+
+                            if (expData.quiz && expData.paper) {
+                                const accuracy = calculateQuizScore(expData.quiz, expData.paper);
+                                const roundedAccuracy = parseFloat(accuracy.toFixed(2));
+
+                                // accuracy가 변경되었거나 없으면 업데이트
+                                if (expData.accuracy !== roundedAccuracy) {
+                                    try {
+                                        const expDocRef = window.firebaseDoc(
+                                            window.firebaseDb,
+                                            'users',
+                                            participantId,
+                                            'experiments',
+                                            expDoc.id
+                                        );
+                                        await window.firebaseUpdateDoc(expDocRef, {
+                                            accuracy: roundedAccuracy
+                                        });
+                                        processedCount++;
+                                        console.log(`✓ ${participantId} - ${expDoc.id} 재채점 완료: ${roundedAccuracy}%`);
+                                    } catch (error) {
+                                        console.error(`✗ ${participantId} - ${expDoc.id} 업데이트 실패:`, error);
+                                        errorCount++;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    alert(`재채점 완료!\n처리: ${processedCount}개 세션\n오류: ${errorCount}개`);
+
+                    // 데이터 새로고침
+                    await loadData();
+                } catch (error) {
+                    console.error('재채점 오류:', error);
+                    alert('재채점 중 오류가 발생했습니다.');
+                } finally {
+                    setRegrading(false);
+                }
             };
 
             const stats = viewMode === 'condition' ? getConditionStats() : getPaperStats();
@@ -299,49 +465,77 @@
                                     <thead className="bg-gray-100">
                                         <tr>
                                             <th className="px-4 py-2 text-left">참가자 ID</th>
+                                            <th className="px-4 py-2 text-left">세션</th>
                                             <th className="px-4 py-2 text-left">컨디션</th>
                                             <th className="px-4 py-2 text-left">논문</th>
                                             <th className="px-4 py-2 text-left">Pre-Survey</th>
                                             <th className="px-4 py-2 text-left">Post-Survey</th>
                                             <th className="px-4 py-2 text-left">Quiz 답변</th>
+                                            <th className="px-4 py-2 text-left">Accuracy</th>
                                             <th className="px-4 py-2 text-left">제출 시간</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {filteredData.map((item, index) => (
-                                            <tr key={item.id} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
-                                                <td className="px-4 py-2 font-medium">{item.participantId}</td>
-                                                <td className="px-4 py-2">{item.condition || '-'}</td>
-                                                <td className="px-4 py-2 text-sm">{item.paperId || '-'}</td>
-                                                <td className="px-4 py-2">
-                                                    {item.preSurvey ? '✓' : '-'}
-                                                </td>
-                                                <td className="px-4 py-2">
-                                                    {item.postSurvey ? '✓' : '-'}
-                                                </td>
-                                                <td className="px-4 py-2">
-                                                    {item.quizAnswers ?
-                                                        `${Object.keys(item.quizAnswers).length}개` : '-'}
-                                                </td>
-                                                <td className="px-4 py-2 text-sm">
-                                                    {item.timestamp ?
-                                                        new Date(item.timestamp.seconds * 1000).toLocaleString('ko-KR')
-                                                        : '-'}
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {filteredData.map((item, index) => {
+                                            const accuracy = item.quizAnswers ? calculateQuizScore(item.quizAnswers, item.paperId) : null;
+                                            return (
+                                                <tr key={item.id} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
+                                                    <td className="px-4 py-2 font-medium">{item.participantId}</td>
+                                                    <td className="px-4 py-2">{item.sessionNumber || '-'}</td>
+                                                    <td className="px-4 py-2">{item.condition || '-'}</td>
+                                                    <td className="px-4 py-2 text-sm">{item.paperId || '-'}</td>
+                                                    <td className="px-4 py-2">
+                                                        {item.preSurvey ? '✓' : '-'}
+                                                    </td>
+                                                    <td className="px-4 py-2">
+                                                        {item.postSurvey ? '✓' : '-'}
+                                                    </td>
+                                                    <td className="px-4 py-2">
+                                                        {item.quizAnswers ?
+                                                            `${Object.keys(item.quizAnswers).length}개` : '-'}
+                                                    </td>
+                                                    <td className="px-4 py-2">
+                                                        {accuracy !== null ? (
+                                                            <span className={accuracy >= 70 ? 'text-green-600 font-semibold' : accuracy >= 50 ? 'text-yellow-600' : 'text-red-600'}>
+                                                                {accuracy.toFixed(1)}%
+                                                            </span>
+                                                        ) : '-'}
+                                                    </td>
+                                                    <td className="px-4 py-2 text-sm">
+                                                        {item.timestamp ?
+                                                            new Date(item.timestamp.seconds * 1000).toLocaleString('ko-KR')
+                                                            : '-'}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
                         </div>
 
-                        {/* 새로고침 버튼 */}
-                        <div className="mt-6 text-center">
+                        {/* 버튼들 */}
+                        <div className="mt-6 text-center flex gap-4 justify-center flex-wrap">
                             <button
                                 onClick={loadData}
                                 className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700"
+                                disabled={loading}
                             >
                                 데이터 새로고침
+                            </button>
+                            <button
+                                onClick={fixP004QuizData}
+                                className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 disabled:bg-gray-400"
+                                disabled={fixingData || loading}
+                            >
+                                {fixingData ? '수정 중...' : 'Quiz 구조 수정 (모든 P###)'}
+                            </button>
+                            <button
+                                onClick={regradeAllQuizzes}
+                                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                                disabled={regrading || loading || Object.keys(questionData).length === 0}
+                            >
+                                {regrading ? '재채점 중...' : '퀴즈 재채점 (Accuracy 업데이트)'}
                             </button>
                         </div>
                     </div>

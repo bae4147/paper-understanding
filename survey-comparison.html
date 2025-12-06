@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Survey 데이터 비교</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDPd-Fz-PdUwc9uvXAg_xEVR5FyPWCg_zA",
+            authDomain: "paper-understanding.firebaseapp.com",
+            projectId: "paper-understanding",
+            storageBucket: "paper-understanding.firebasestorage.app",
+            messagingSenderId: "702665730649",
+            appId: "1:702665730649:web:9858bde469085a240fdf48"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.firebaseDb = db;
+        window.firebaseCollection = collection;
+        window.firebaseGetDocs = getDocs;
+    </script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function SurveyComparison() {
+            const [data, setData] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [surveyType, setSurveyType] = useState('pre'); // 'pre' or 'post'
+            const [sessionFilter, setSessionFilter] = useState('all'); // 'all', '1', '2'
+
+            useEffect(() => {
+                loadData();
+            }, []);
+
+            const loadData = async () => {
+                try {
+                    setLoading(true);
+                    const usersRef = window.firebaseCollection(window.firebaseDb, 'users');
+                    const snapshot = await window.firebaseGetDocs(usersRef);
+
+                    const allData = [];
+
+                    for (const userDoc of snapshot.docs) {
+                        const participantId = userDoc.id;
+                        const userData = userDoc.data();
+
+                        // P### 형태만 처리
+                        if (!/^P\d{3}$/.test(participantId)) {
+                            continue;
+                        }
+
+                        // experiments 서브컬렉션 읽기
+                        const experimentsRef = window.firebaseCollection(userDoc.ref, 'experiments');
+                        const experimentsSnapshot = await window.firebaseGetDocs(experimentsRef);
+
+                        experimentsSnapshot.forEach((expDoc) => {
+                            const expData = expDoc.data();
+                            const sessionNumber = expData.sessionNumber;
+
+                            allData.push({
+                                participantId,
+                                sessionNumber,
+                                condition: expData.condition,
+                                paperId: expData.paper,
+                                preSurvey: sessionNumber === 1 ? userData.preSurvey : null,
+                                postSurvey: userData[`postSurvey_session${sessionNumber}`]
+                            });
+                        });
+                    }
+
+                    setData(allData);
+                } catch (error) {
+                    console.error('데이터 로딩 오류:', error);
+                    alert('데이터를 불러오는 중 오류가 발생했습니다.');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            // 필터링된 데이터
+            const filteredData = data.filter(item => {
+                if (sessionFilter !== 'all' && item.sessionNumber !== parseInt(sessionFilter)) {
+                    return false;
+                }
+                return true;
+            });
+
+            // Pre-Survey 테이블 렌더링
+            const renderPreSurveyTable = () => {
+                const preSurveyData = filteredData.filter(item => item.preSurvey);
+
+                if (preSurveyData.length === 0) {
+                    return <p className="text-gray-500">Pre-survey 데이터가 없습니다.</p>;
+                }
+
+                return (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm border-collapse">
+                            <thead className="bg-gray-100 sticky top-0">
+                                <tr>
+                                    <th className="border px-2 py-2">참가자</th>
+                                    <th className="border px-2 py-2">나이</th>
+                                    <th className="border px-2 py-2">성별</th>
+                                    <th className="border px-2 py-2">전공</th>
+                                    <th className="border px-2 py-2">학력</th>
+                                    <th className="border px-2 py-2">연구경력</th>
+                                    <th className="border px-2 py-2">출판경험</th>
+                                    <th className="border px-2 py-2">출판수</th>
+                                    <th className="border px-2 py-2">리뷰경험</th>
+                                    <th className="border px-2 py-2">리뷰수</th>
+                                    <th className="border px-2 py-2">논문읽기빈도</th>
+                                    <th className="border px-2 py-2">LLM사용빈도</th>
+                                    <th className="border px-2 py-2">LLM논문읽기빈도</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {preSurveyData.map((item, index) => {
+                                    const survey = item.preSurvey;
+                                    if (!survey) return null;
+
+                                    return (
+                                        <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                            <td className="border px-2 py-2 font-semibold">{item.participantId}</td>
+                                            <td className="border px-2 py-2">{survey.demographics?.age || '-'}</td>
+                                            <td className="border px-2 py-2">{survey.demographics?.gender || '-'}</td>
+                                            <td className="border px-2 py-2">{survey.demographics?.major || '-'}</td>
+                                            <td className="border px-2 py-2">{survey.demographics?.education || '-'}</td>
+                                            <td className="border px-2 py-2">{survey.academicExperience?.researchYears || '-'}</td>
+                                            <td className="border px-2 py-2">{survey.academicExperience?.publicationExperience ? 'O' : 'X'}</td>
+                                            <td className="border px-2 py-2">{survey.academicExperience?.publicationCount || '-'}</td>
+                                            <td className="border px-2 py-2">{survey.academicExperience?.reviewExperience ? 'O' : 'X'}</td>
+                                            <td className="border px-2 py-2">{survey.academicExperience?.reviewCount || '-'}</td>
+                                            <td className="border px-2 py-2">{survey.academicExperience?.paperReadingFrequency || '-'}</td>
+                                            <td className="border px-2 py-2">{survey.llmUsage?.generalFrequency || '-'}</td>
+                                            <td className="border px-2 py-2">{survey.llmUsage?.paperReadingFrequency || '-'}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                );
+            };
+
+            // Post-Survey 테이블 렌더링
+            const renderPostSurveyTable = () => {
+                const postSurveyData = filteredData.filter(item => item.postSurvey);
+
+                if (postSurveyData.length === 0) {
+                    return <p className="text-gray-500">Post-survey 데이터가 없습니다.</p>;
+                }
+
+                return (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm border-collapse">
+                            <thead className="bg-gray-100 sticky top-0">
+                                <tr>
+                                    <th className="border px-2 py-2">참가자</th>
+                                    <th className="border px-2 py-2">세션</th>
+                                    <th className="border px-2 py-2">컨디션</th>
+                                    <th className="border px-2 py-2">논문</th>
+                                    <th className="border px-2 py-2 bg-blue-50" colSpan="6">NASA-TLX</th>
+                                    <th className="border px-2 py-2 bg-green-50" colSpan="4">이해도</th>
+                                    <th className="border px-2 py-2 bg-yellow-50">퀴즈 자신감</th>
+                                    <th className="border px-2 py-2 bg-purple-50" colSpan="4">리뷰 자신감</th>
+                                </tr>
+                                <tr>
+                                    <th className="border px-2 py-2"></th>
+                                    <th className="border px-2 py-2"></th>
+                                    <th className="border px-2 py-2"></th>
+                                    <th className="border px-2 py-2"></th>
+                                    <th className="border px-2 py-2 bg-blue-50">정신적요구</th>
+                                    <th className="border px-2 py-2 bg-blue-50">신체적요구</th>
+                                    <th className="border px-2 py-2 bg-blue-50">시간적요구</th>
+                                    <th className="border px-2 py-2 bg-blue-50">성과</th>
+                                    <th className="border px-2 py-2 bg-blue-50">노력</th>
+                                    <th className="border px-2 py-2 bg-blue-50">좌절</th>
+                                    <th className="border px-2 py-2 bg-green-50">전체</th>
+                                    <th className="border px-2 py-2 bg-green-50">연구질문</th>
+                                    <th className="border px-2 py-2 bg-green-50">방법론</th>
+                                    <th className="border px-2 py-2 bg-green-50">결과</th>
+                                    <th className="border px-2 py-2 bg-yellow-50">퀴즈</th>
+                                    <th className="border px-2 py-2 bg-purple-50">평가</th>
+                                    <th className="border px-2 py-2 bg-purple-50">강점</th>
+                                    <th className="border px-2 py-2 bg-purple-50">약점</th>
+                                    <th className="border px-2 py-2 bg-purple-50">제안</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {postSurveyData.map((item, index) => {
+                                    const survey = item.postSurvey;
+                                    if (!survey) return null;
+
+                                    return (
+                                        <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                            <td className="border px-2 py-2 font-semibold">{item.participantId}</td>
+                                            <td className="border px-2 py-2">{item.sessionNumber}</td>
+                                            <td className="border px-2 py-2 text-xs">{item.condition}</td>
+                                            <td className="border px-2 py-2 text-xs">{item.paperId?.substring(0, 20) || '-'}</td>
+                                            <td className="border px-2 py-2 bg-blue-50">{survey.nasaTLX?.mentalDemand || '-'}</td>
+                                            <td className="border px-2 py-2 bg-blue-50">{survey.nasaTLX?.physicalDemand || '-'}</td>
+                                            <td className="border px-2 py-2 bg-blue-50">{survey.nasaTLX?.temporalDemand || '-'}</td>
+                                            <td className="border px-2 py-2 bg-blue-50">{survey.nasaTLX?.performance || '-'}</td>
+                                            <td className="border px-2 py-2 bg-blue-50">{survey.nasaTLX?.effort || '-'}</td>
+                                            <td className="border px-2 py-2 bg-blue-50">{survey.nasaTLX?.frustration || '-'}</td>
+                                            <td className="border px-2 py-2 bg-green-50">{survey.selfEfficacy?.overallComprehension?.overall || '-'}</td>
+                                            <td className="border px-2 py-2 bg-green-50">{survey.selfEfficacy?.overallComprehension?.researchQuestion || '-'}</td>
+                                            <td className="border px-2 py-2 bg-green-50">{survey.selfEfficacy?.overallComprehension?.methodology || '-'}</td>
+                                            <td className="border px-2 py-2 bg-green-50">{survey.selfEfficacy?.overallComprehension?.results || '-'}</td>
+                                            <td className="border px-2 py-2 bg-yellow-50">{survey.selfEfficacy?.quizConfidence || '-'}</td>
+                                            <td className="border px-2 py-2 bg-purple-50">{survey.selfEfficacy?.reviewConfidence?.rating || '-'}</td>
+                                            <td className="border px-2 py-2 bg-purple-50">{survey.selfEfficacy?.reviewConfidence?.strengths || '-'}</td>
+                                            <td className="border px-2 py-2 bg-purple-50">{survey.selfEfficacy?.reviewConfidence?.weaknesses || '-'}</td>
+                                            <td className="border px-2 py-2 bg-purple-50">{survey.selfEfficacy?.reviewConfidence?.suggestions || '-'}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                );
+            };
+
+            if (loading) {
+                return (
+                    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                        <div className="text-xl">데이터 로딩 중...</div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-gray-50 p-8">
+                    <div className="max-w-full mx-auto">
+                        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                            <h1 className="text-3xl font-bold mb-6">Survey 데이터 비교</h1>
+
+                            {/* 필터 옵션 */}
+                            <div className="flex gap-4 mb-6">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Survey 종류</label>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setSurveyType('pre')}
+                                            className={`px-4 py-2 rounded ${
+                                                surveyType === 'pre'
+                                                    ? 'bg-blue-600 text-white'
+                                                    : 'bg-gray-200 text-gray-700'
+                                            }`}
+                                        >
+                                            Pre-Survey
+                                        </button>
+                                        <button
+                                            onClick={() => setSurveyType('post')}
+                                            className={`px-4 py-2 rounded ${
+                                                surveyType === 'post'
+                                                    ? 'bg-blue-600 text-white'
+                                                    : 'bg-gray-200 text-gray-700'
+                                            }`}
+                                        >
+                                            Post-Survey
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {surveyType === 'post' && (
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">세션 필터</label>
+                                        <select
+                                            value={sessionFilter}
+                                            onChange={(e) => setSessionFilter(e.target.value)}
+                                            className="border rounded px-3 py-2"
+                                        >
+                                            <option value="all">전체</option>
+                                            <option value="1">세션 1</option>
+                                            <option value="2">세션 2</option>
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="bg-blue-50 border-l-4 border-blue-600 p-4 mb-6">
+                                <p className="text-sm">
+                                    <strong>총 데이터:</strong> {filteredData.length}개 세션
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* 테이블 */}
+                        <div className="bg-white rounded-lg shadow-lg p-6">
+                            <h2 className="text-2xl font-bold mb-4">
+                                {surveyType === 'pre' ? 'Pre-Survey' : 'Post-Survey'} 데이터
+                            </h2>
+                            {surveyType === 'pre' ? renderPreSurveyTable() : renderPostSurveyTable()}
+                        </div>
+
+                        {/* 새로고침 버튼 */}
+                        <div className="mt-6 text-center">
+                            <button
+                                onClick={loadData}
+                                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700"
+                            >
+                                데이터 새로고침
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<SurveyComparison />, document.getElementById('root'));
+    </script>
+</body>
+</html>
