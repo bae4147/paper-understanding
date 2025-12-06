@@ -52,6 +52,10 @@
     {
       "title": "Acknowledgments",
       "level": 2
+    },
+    {
+      "title": "References",
+      "level": 2
     }
   ],
   "section_boundaries": {
@@ -102,6 +106,10 @@
     "Acknowledgments": {
       "start": 32262,
       "end": 32640
+    },
+    "References": {
+      "start": 32640,
+      "end": 50000
     }
   }
 }

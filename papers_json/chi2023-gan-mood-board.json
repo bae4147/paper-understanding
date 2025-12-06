@@ -44,6 +44,14 @@
     {
       "title": "5 Conclusion",
       "level": 2
+    },
+    {
+      "title": "Acknowledgments",
+      "level": 2
+    },
+    {
+      "title": "References",
+      "level": 2
     }
   ],
   "section_boundaries": {
@@ -86,6 +94,14 @@
     "5 Conclusion": {
       "start": 36904,
       "end": 38608
+    },
+    "Acknowledgments": {
+      "start": 38608,
+      "end": 39000
+    },
+    "References": {
+      "start": 39000,
+      "end": 60000
     }
   }
 }
