@@ -1234,6 +1234,9 @@
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                            Delete
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                             Participant
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -1249,18 +1252,32 @@
                                             Completed
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                            Actions
+                                            View
                                         </th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
                                     {experiments.map((exp) => (
                                         <tr key={exp.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4">
+                                                <button
+                                                    onClick={() => handleDelete(exp)}
+                                                    disabled={isValidParticipantId(exp.participantId)}
+                                                    className={`text-sm font-medium ${
+                                                        isValidParticipantId(exp.participantId)
+                                                            ? 'text-gray-300 cursor-not-allowed'
+                                                            : 'text-red-600 hover:text-red-800'
+                                                    }`}
+                                                    title={isValidParticipantId(exp.participantId) ? 'Protected participant (P***)' : 'Delete experiment'}
+                                                >
+                                                    🗑️
+                                                </button>
+                                            </td>
                                             <td className="px-6 py-4">{exp.participantId}</td>
                                             <td className="px-6 py-4">
                                                 <span className={`px-2 py-1 rounded text-xs ${
-                                                    exp.condition === 'with_llm' 
-                                                        ? 'bg-purple-100 text-purple-800' 
+                                                    exp.condition === 'with_llm'
+                                                        ? 'bg-purple-100 text-purple-800'
                                                         : 'bg-gray-100 text-gray-800'
                                                 }`}>
                                                     {exp.condition}
@@ -1272,29 +1289,15 @@
                                                 {exp.completedAt ? new Date(exp.completedAt).toLocaleString() : 'N/A'}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="flex items-center space-x-3">
-                                                    <button
-                                                        onClick={() => {
-                                                            setSelectedExperiment(exp);
-                                                            setView('detail');
-                                                        }}
-                                                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                                                    >
-                                                        View
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDelete(exp)}
-                                                        disabled={isValidParticipantId(exp.participantId)}
-                                                        className={`text-sm font-medium ${
-                                                            isValidParticipantId(exp.participantId)
-                                                                ? 'text-gray-300 cursor-not-allowed'
-                                                                : 'text-red-600 hover:text-red-800'
-                                                        }`}
-                                                        title={isValidParticipantId(exp.participantId) ? 'Protected participant (P***)' : 'Delete experiment'}
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedExperiment(exp);
+                                                        setView('detail');
+                                                    }}
+                                                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                                >
+                                                    View →
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}
