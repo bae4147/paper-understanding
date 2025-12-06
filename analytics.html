@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>실험 데이터 분석</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDPd-Fz-PdUwc9uvXAg_xEVR5FyPWCg_zA",
+            authDomain: "paper-understanding.firebaseapp.com",
+            projectId: "paper-understanding",
+            storageBucket: "paper-understanding.firebasestorage.app",
+            messagingSenderId: "702665730649",
+            appId: "1:702665730649:web:9858bde469085a240fdf48"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.firebaseDb = db;
+        window.firebaseCollection = collection;
+        window.firebaseGetDocs = getDocs;
+        window.firebaseQuery = query;
+        window.firebaseWhere = where;
+    </script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function Analytics() {
+            const [data, setData] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [viewMode, setViewMode] = useState('condition'); // 'condition' or 'paper'
+            const [filterPattern, setFilterPattern] = useState('P');
+
+            useEffect(() => {
+                loadData();
+            }, []);
+
+            const loadData = async () => {
+                try {
+                    setLoading(true);
+                    const responsesRef = window.firebaseCollection(window.firebaseDb, 'responses');
+                    const snapshot = await window.firebaseGetDocs(responsesRef);
+
+                    const allData = [];
+                    snapshot.forEach((doc) => {
+                        allData.push({ id: doc.id, ...doc.data() });
+                    });
+
+                    setData(allData);
+                } catch (error) {
+                    console.error('데이터 로딩 오류:', error);
+                    alert('데이터를 불러오는 중 오류가 발생했습니다.');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            // P로 시작하는 참가자만 필터링
+            const filteredData = data.filter(item =>
+                item.participantId && item.participantId.startsWith(filterPattern)
+            );
+
+            // 컨디션별 통계
+            const getConditionStats = () => {
+                const stats = {};
+
+                filteredData.forEach(item => {
+                    const condition = item.condition || 'unknown';
+                    if (!stats[condition]) {
+                        stats[condition] = {
+                            count: 0,
+                            preSurvey: [],
+                            postSurvey: [],
+                            quizScores: []
+                        };
+                    }
+
+                    stats[condition].count++;
+
+                    // Pre-survey 데이터
+                    if (item.preSurvey) {
+                        stats[condition].preSurvey.push(item.preSurvey);
+                    }
+
+                    // Post-survey 데이터
+                    if (item.postSurvey) {
+                        stats[condition].postSurvey.push(item.postSurvey);
+                    }
+
+                    // Quiz 점수 계산
+                    if (item.quizAnswers) {
+                        const score = calculateQuizScore(item.quizAnswers, item.paperId);
+                        stats[condition].quizScores.push(score);
+                    }
+                });
+
+                return stats;
+            };
+
+            // 논문별 통계
+            const getPaperStats = () => {
+                const stats = {};
+
+                filteredData.forEach(item => {
+                    const paper = item.paperId || 'unknown';
+                    if (!stats[paper]) {
+                        stats[paper] = {
+                            count: 0,
+                            preSurvey: [],
+                            postSurvey: [],
+                            quizScores: []
+                        };
+                    }
+
+                    stats[paper].count++;
+
+                    if (item.preSurvey) {
+                        stats[paper].preSurvey.push(item.preSurvey);
+                    }
+
+                    if (item.postSurvey) {
+                        stats[paper].postSurvey.push(item.postSurvey);
+                    }
+
+                    if (item.quizAnswers) {
+                        const score = calculateQuizScore(item.quizAnswers, item.paperId);
+                        stats[paper].quizScores.push(score);
+                    }
+                });
+
+                return stats;
+            };
+
+            // Quiz 점수 계산 (정답 데이터가 필요함)
+            const calculateQuizScore = (answers, paperId) => {
+                if (!answers) return 0;
+                // 여기서는 임시로 답변 개수만 반환
+                // 실제로는 정답 데이터와 비교 필요
+                return Object.keys(answers).length;
+            };
+
+            const stats = viewMode === 'condition' ? getConditionStats() : getPaperStats();
+
+            const calculateAverage = (scores) => {
+                if (scores.length === 0) return 0;
+                return (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2);
+            };
+
+            if (loading) {
+                return (
+                    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                        <div className="text-xl">데이터 로딩 중...</div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-gray-50 p-8">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                            <h1 className="text-3xl font-bold mb-6">실험 데이터 분석</h1>
+
+                            {/* 필터 및 뷰 옵션 */}
+                            <div className="flex gap-4 mb-6">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">참가자 ID 필터</label>
+                                    <input
+                                        type="text"
+                                        value={filterPattern}
+                                        onChange={(e) => setFilterPattern(e.target.value)}
+                                        className="border rounded px-3 py-2 w-32"
+                                        placeholder="예: P"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">분석 기준</label>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setViewMode('condition')}
+                                            className={`px-4 py-2 rounded ${
+                                                viewMode === 'condition'
+                                                    ? 'bg-blue-600 text-white'
+                                                    : 'bg-gray-200 text-gray-700'
+                                            }`}
+                                        >
+                                            컨디션별
+                                        </button>
+                                        <button
+                                            onClick={() => setViewMode('paper')}
+                                            className={`px-4 py-2 rounded ${
+                                                viewMode === 'paper'
+                                                    ? 'bg-blue-600 text-white'
+                                                    : 'bg-gray-200 text-gray-700'
+                                            }`}
+                                        >
+                                            논문별
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-blue-50 border-l-4 border-blue-600 p-4 mb-6">
+                                <p className="text-sm">
+                                    <strong>총 데이터:</strong> {data.length}개 |{' '}
+                                    <strong>필터링된 데이터:</strong> {filteredData.length}개
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* 통계 카드 */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {Object.entries(stats).map(([key, value]) => (
+                                <div key={key} className="bg-white rounded-lg shadow-lg p-6">
+                                    <h2 className="text-xl font-bold mb-4 text-blue-600">
+                                        {viewMode === 'condition' ? `컨디션: ${key}` : `논문: ${key}`}
+                                    </h2>
+
+                                    <div className="space-y-3">
+                                        <div className="border-b pb-2">
+                                            <p className="text-sm text-gray-600">참가자 수</p>
+                                            <p className="text-2xl font-bold">{value.count}</p>
+                                        </div>
+
+                                        <div className="border-b pb-2">
+                                            <p className="text-sm text-gray-600">퀴즈 평균 점수</p>
+                                            <p className="text-2xl font-bold">
+                                                {calculateAverage(value.quizScores)}
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                                (응답 {value.quizScores.length}개)
+                                            </p>
+                                        </div>
+
+                                        <div className="border-b pb-2">
+                                            <p className="text-sm text-gray-600">Pre-Survey 응답</p>
+                                            <p className="text-xl font-semibold">{value.preSurvey.length}개</p>
+                                        </div>
+
+                                        <div>
+                                            <p className="text-sm text-gray-600">Post-Survey 응답</p>
+                                            <p className="text-xl font-semibold">{value.postSurvey.length}개</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* 상세 데이터 테이블 */}
+                        <div className="bg-white rounded-lg shadow-lg p-6 mt-6">
+                            <h2 className="text-2xl font-bold mb-4">상세 데이터</h2>
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-gray-100">
+                                        <tr>
+                                            <th className="px-4 py-2 text-left">참가자 ID</th>
+                                            <th className="px-4 py-2 text-left">컨디션</th>
+                                            <th className="px-4 py-2 text-left">논문</th>
+                                            <th className="px-4 py-2 text-left">Pre-Survey</th>
+                                            <th className="px-4 py-2 text-left">Post-Survey</th>
+                                            <th className="px-4 py-2 text-left">Quiz 답변</th>
+                                            <th className="px-4 py-2 text-left">제출 시간</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredData.map((item, index) => (
+                                            <tr key={item.id} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
+                                                <td className="px-4 py-2 font-medium">{item.participantId}</td>
+                                                <td className="px-4 py-2">{item.condition || '-'}</td>
+                                                <td className="px-4 py-2 text-sm">{item.paperId || '-'}</td>
+                                                <td className="px-4 py-2">
+                                                    {item.preSurvey ? '✓' : '-'}
+                                                </td>
+                                                <td className="px-4 py-2">
+                                                    {item.postSurvey ? '✓' : '-'}
+                                                </td>
+                                                <td className="px-4 py-2">
+                                                    {item.quizAnswers ?
+                                                        `${Object.keys(item.quizAnswers).length}개` : '-'}
+                                                </td>
+                                                <td className="px-4 py-2 text-sm">
+                                                    {item.timestamp ?
+                                                        new Date(item.timestamp.seconds * 1000).toLocaleString('ko-KR')
+                                                        : '-'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* 새로고침 버튼 */}
+                        <div className="mt-6 text-center">
+                            <button
+                                onClick={loadData}
+                                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700"
+                            >
+                                데이터 새로고침
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<Analytics />, document.getElementById('root'));
+    </script>
+</body>
+</html>
