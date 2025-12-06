@@ -46,10 +46,6 @@
       "level": 2
     },
     {
-      "title": "Acknowledgments",
-      "level": 2
-    },
-    {
       "title": "References",
       "level": 2
     }
@@ -95,12 +91,8 @@
       "start": 36904,
       "end": 38608
     },
-    "Acknowledgments": {
-      "start": 38608,
-      "end": 39000
-    },
     "References": {
-      "start": 39000,
+      "start": 38608,
       "end": 60000
     }
   }
